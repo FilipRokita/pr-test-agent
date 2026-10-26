@@ -23,8 +23,6 @@
 		"vscode": {
 			"extensions": [
 				"anthropic.claude-code",
-				"ms-python.python",
-				"ms-python.vscode-pylance",
 				"esbenp.prettier-vscode",
 				"mtxr.sqltools",
 				"mtxr.sqltools-driver-pg"
