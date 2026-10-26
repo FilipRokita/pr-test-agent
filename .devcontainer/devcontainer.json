@@ -1,0 +1,42 @@
+// Dev container for Taskly (FastAPI backend + React frontend), modelled on the Tapisode setup.
+{
+	"name": "Taskly (Python + Node)",
+	// Debian trixie ships PostgreSQL 17 natively, matching compose.yaml.
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:5-24-trixie",
+
+	"features": {
+		// Python 3.12, same as backend/Dockerfile. The first build compiles it, so it takes a few minutes.
+		"ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+
+	// UTC, like the production containers.
+	"containerEnv": { "TZ": "UTC" },
+
+	// 5173 Vite dev server, 6006 Storybook, 8000 FastAPI.
+	"forwardPorts": [5173, 6006, 8000],
+
+	"postCreateCommand": "bash .devcontainer/setup.sh",
+	"postStartCommand": "bash .devcontainer/start.sh",
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"anthropic.claude-code",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"esbenp.prettier-vscode",
+				"mtxr.sqltools",
+				"mtxr.sqltools-driver-pg"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "${containerWorkspaceFolder}/backend/.venv/bin/python",
+				"python.testing.pytestEnabled": true,
+				"python.testing.cwd": "${containerWorkspaceFolder}/backend",
+				"editor.defaultFormatter": "esbenp.prettier-vscode"
+			}
+		}
+	},
+
+	"remoteUser": "root"
+}
