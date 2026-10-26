@@ -1,7 +1,6 @@
 // Dev container for Taskly (FastAPI backend + React frontend), modelled on the Tapisode setup.
 {
 	"name": "Taskly (Python + Node)",
-	// Debian trixie ships PostgreSQL 17 natively, matching compose.yaml.
 	"image": "mcr.microsoft.com/devcontainers/python:3.12-trixie",
 
 	"features": {
@@ -20,7 +19,6 @@
 	"forwardPorts": [5173, 6006, 8000, 8080],
 
 	"postCreateCommand": "bash .devcontainer/setup.sh",
-	"postStartCommand": "bash .devcontainer/start.sh",
 
 	"customizations": {
 		"vscode": {
