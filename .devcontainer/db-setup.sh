@@ -19,3 +19,7 @@ sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${POSTGRES_USE
   || sudo -u postgres psql -c "CREATE ROLE \"${POSTGRES_USER}\" LOGIN PASSWORD '${POSTGRES_PASSWORD}';"
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${POSTGRES_DB}'" | grep -q 1 \
   || sudo -u postgres createdb -O "${POSTGRES_USER}" "${POSTGRES_DB}"
+
+# Leave it stopped: the README runs the database with docker compose (same port 5432).
+# Start it manually with db-start.sh when needed.
+sudo pg_ctlcluster 17 main stop
