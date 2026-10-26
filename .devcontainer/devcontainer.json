@@ -6,7 +6,7 @@
 
 	"features": {
 		// Node 24 for the frontend (Python 3.12, same as backend/Dockerfile, comes with the image).
-		"ghcr.io/devcontainers/features/node:1": { "version": "24" },
+		"ghcr.io/devcontainers/features/node:2": { "version": "24" },
 		"ghcr.io/devcontainers/features/github-cli:1": {},
 		// Lets the README's `docker compose up` work inside the container.
 		// Moby packages are not available on Debian trixie, so install Docker CE.
