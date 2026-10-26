@@ -84,12 +84,10 @@ one, or use a comma or colon. Anywhere else is fine.
 
 ## 4. Documentation
 
-[`README.md`](README.md) (overview, stack, architecture principles) and
-[`docs/`](docs/) are **not** loaded automatically: read the README when you need
-the overview or before touching architecture, and read the relevant docs before
-acting there. Keep both current.
+[`README.md`](README.md) (setup, run and test instructions) is **not** loaded
+automatically: read it when you need to run the project. Keep it current.
 
-Whichever one a change makes stale, update it in the same change rather than
+Whichever doc a change makes stale, update it in the same change rather than
 later. When a change touches something the docs describe, update them. Add a new
 doc only when it is genuinely needed (keep docs lean). This file is part of that rule too: when a workflow, command, path
 or rule it names changes, update `AGENTS.md` in the same change.
