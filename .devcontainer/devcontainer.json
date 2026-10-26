@@ -2,11 +2,11 @@
 {
 	"name": "Taskly (Python + Node)",
 	// Debian trixie ships PostgreSQL 17 natively, matching compose.yaml.
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:5-24-trixie",
+	"image": "mcr.microsoft.com/devcontainers/python:3.12-trixie",
 
 	"features": {
-		// Python 3.12, same as backend/Dockerfile. The first build compiles it, so it takes a few minutes.
-		"ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
+		// Node 24 for the frontend (Python 3.12, same as backend/Dockerfile, comes with the image).
+		"ghcr.io/devcontainers/features/node:1": { "version": "24" },
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 
