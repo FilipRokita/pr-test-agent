@@ -5,6 +5,7 @@ of the pull request.
 """
 
 import json
+import os
 import re
 
 from . import github as gh_cli
@@ -77,7 +78,8 @@ def publish(root, ctx, agent, verification, patch_text, *, gh, remote="origin", 
 
     if action in ("create", "update"):
         proposal.commit(root, ctx["head"], branch, patch_text, f"Add tests proposed by the test agent for #{ctx['pull_request']}")
-        proposal.push(root, branch, remote, config=CREDENTIALS)
+        token = {key: os.environ[key] for key in ("GH_TOKEN", "GITHUB_TOKEN") if key in os.environ}
+        proposal.push(root, branch, remote, extra_env=token, config=CREDENTIALS)
         body = report.render_pull_request_body(ctx, agent, verification)
         if action == "create":
             number = gh.create_pr(title=_title(ctx), head=branch, base=ctx["head_ref"], body=body)

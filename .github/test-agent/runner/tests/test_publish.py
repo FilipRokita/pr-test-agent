@@ -139,3 +139,16 @@ def test_cleanup_closes_the_pull_request_and_deletes_the_branch(env):
     gh = Cleanup(stacked={"number": 21}, tip_email=proposal.BOT_EMAIL)
     publish.cleanup(env[2], gh=gh)
     assert gh.calls[0][0] == "close" and gh.deleted == ["test-agent/pr-9"]
+
+
+def test_the_push_receives_the_token_for_the_credential_helper(env, monkeypatch):
+    seen = {}
+
+    def spy_push(root, branch, remote="origin", extra_env=None, config=()):
+        seen["env"], seen["config"] = extra_env, config
+
+    monkeypatch.setattr(proposal, "push", spy_push)
+    monkeypatch.setenv("GH_TOKEN", "token-for-the-helper")
+    run(env, FakeGithub())
+    assert seen["env"] == {"GH_TOKEN": "token-for-the-helper"}
+    assert ("credential.helper", "!gh auth git-credential") in seen["config"]
