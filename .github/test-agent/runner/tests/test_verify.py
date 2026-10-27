@@ -84,10 +84,18 @@ def healthy_runner():
     return ScriptedRunner(base, after, after, after, reverted)
 
 
-def test_an_empty_patch_needs_no_verification(repo):
-    runner = ScriptedRunner()
-    assert go(repo, "", runner) == {"status": "verified", "patch_files": [], "stacks": {}, "warnings": []}
-    assert runner.calls == []
+def test_an_empty_patch_still_checks_whether_the_pull_request_breaks_existing_tests(repo):
+    runner = ScriptedRunner(run_result(case("failed", OLD), ok=False))
+    result = go(repo, "", runner)
+    assert result["status"] == "verified" and result["patch_files"] == []
+    assert result["stacks"]["backend"]["breaks_existing"] == [OLD]
+    assert [c["coverage"] for c in runner.calls] == [False]
+
+
+def test_an_empty_patch_with_a_healthy_suite_reports_nothing_broken(repo):
+    result = go(repo, "", ScriptedRunner(run_result(case("passed", OLD))))
+    assert result["stacks"]["backend"]["breaks_existing"] == []
+    assert result["stacks"]["backend"]["counts"]["passed"] == 1
 
 
 def test_a_patch_that_the_guard_rejects_never_reaches_a_test_run(repo):

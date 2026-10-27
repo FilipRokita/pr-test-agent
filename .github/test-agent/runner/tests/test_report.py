@@ -155,3 +155,12 @@ def test_the_pull_request_body_is_escaped_text():
     agent = {**AGENT, "structured_output": {**AGENT["structured_output"], "summary": "@x <b>y</b>"}}
     body = report.render_pull_request_body({"pull_request": 9}, agent, VERIFIED)
     assert "#9" in body and "<b>" not in body
+
+
+def test_breaking_existing_tests_is_the_headline_even_when_no_new_tests_are_needed():
+    verification = {"status": "verified", "patch_files": [], "warnings": [], "stacks": {"frontend": {
+        "ok": True, "counts": {"passed": 78, "failed": 1, "error": 0, "skipped": 0}, "runs": [],
+        "breaks_existing": ["src/utils/todos.test.ts::treats an active task due today as overdue: false"]}}}
+    text = report.render(CTX, AGENT, verification)
+    assert "breaks 1 existing" in text.splitlines()[1]
+    assert "No new tests needed" not in text.splitlines()[1]

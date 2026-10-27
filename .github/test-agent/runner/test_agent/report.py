@@ -104,7 +104,8 @@ def _headline(ctx, agent, verification) -> str:
     updated = sum(1 for d in decisions if d.get("action") == "update")
     if verification.get("status") == "verified":
         if not verification.get("patch_files"):
-            return "No new tests needed"
+            broken = sum(len(s.get("breaks_existing") or []) for s in (verification.get("stacks") or {}).values())
+            return f"This pull request breaks {broken} existing tests" if broken else "No new tests needed"
         return f"{added} added, {updated} updated, all verified"
     if verification.get("status") == "error":
         return "Verification could not run: " + _text(verification.get("reason"), 200)

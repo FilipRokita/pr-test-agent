@@ -85,11 +85,26 @@ def _verify_stack(root, ctx, stack, patch_files, baseline, runner, measure, out_
     return out
 
 
+def _without_proposal(root: Path, ctx: dict, runner, out_root: Path) -> dict:
+    """No tests were proposed, but the pull request itself may break existing ones: run the suite once."""
+    stacks = {}
+    for stack in ctx["stacks"]:
+        result = runner(root, stack, [], coverage=False, out_dir=sandbox.prepare_out_dir(out_root / f"{stack}-baseline"))
+        if result.get("error") or result.get("counts") is None:
+            return {"status": "error", "patch_files": [], "stacks": {}, "warnings": [],
+                    "reason": f"the {stack} tests could not be run: {result.get('error', '')}"}
+        broken = sorted(t["id"] for t in _outcomes(result) if t["outcome"] in ("failed", "error"))
+        stacks[stack] = {"ok": True, "counts": result["counts"], "runs": [], "new_tests": 0, "new_test_ids": [],
+                         "failing": [], "flaky": [], "broken_by_patch": [], "breaks_existing": broken,
+                         "ids_changed": False, "coverage": None, "revert": {"checked": False, "reason": "no new tests"}}
+    return {"status": "verified", "patch_files": [], "stacks": stacks, "warnings": []}
+
+
 def verify(root: Path, ctx: dict, patch_text: str, *, runner=tools.run_stack, scanner=secrets.scan,
            measure=coverage.changed_lines, out_root: Path | None = None) -> dict:
     root = Path(root)
     if not patch_text.strip():
-        return {"status": "verified", "patch_files": [], "stacks": {}, "warnings": []}
+        return _without_proposal(root, ctx, runner, Path(out_root) if out_root else root.parent / "test-agent-out")
 
     checked = guard.check(patch_text)
     if checked.violations:
