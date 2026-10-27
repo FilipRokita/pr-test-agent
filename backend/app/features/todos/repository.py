@@ -46,3 +46,6 @@ class TodoRepository:
         self.session.delete(record)
         self.session.commit()
         return True
+
+    def count_completed(self) -> int:
+        return sum(1 for todo in self.list() if todo.completed)
