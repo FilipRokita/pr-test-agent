@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from unittest.mock import Mock, patch
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
@@ -112,3 +112,16 @@ def test_delete_returns_false_and_skips_commit_for_missing_task():
 
     session.delete.assert_not_called()
     session.commit.assert_not_called()
+
+
+def test_delete_completed_removes_only_completed_tasks_and_returns_count():
+    session = Mock(spec=Session)
+    session.execute.return_value.rowcount = 3
+
+    assert TodoRepository(session).delete_completed() == 3
+
+    statement = session.execute.call_args.args[0]
+    assert statement.compare(delete(TodoRecord).where(TodoRecord.completed.is_(True)))
+    compiled = str(statement.compile(dialect=postgresql.dialect()))
+    assert compiled.startswith("DELETE FROM todos WHERE todos.completed IS true")
+    session.commit.assert_called_once_with()

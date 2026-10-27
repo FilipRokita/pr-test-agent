@@ -83,6 +83,16 @@ def test_delete_returns_404_for_missing_task(client, repository_mock):
     repository_mock.delete.assert_called_once_with(404)
 
 
+@pytest.mark.parametrize("count", [0, 3])
+def test_delete_completed_returns_number_of_deleted_tasks(client, repository_mock, count):
+    repository_mock.delete_completed.return_value = count
+    response = client.delete("/api/todos/completed")
+    assert response.status_code == 200
+    assert response.json() == {"deleted": count}
+    repository_mock.delete_completed.assert_called_once_with()
+    repository_mock.delete.assert_not_called()
+
+
 @pytest.mark.parametrize("method, kwargs", [
     ("get", {}),
     ("patch", {"json": {"title": "New"}}),
