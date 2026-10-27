@@ -164,3 +164,15 @@ def test_breaking_existing_tests_is_the_headline_even_when_no_new_tests_are_need
     text = report.render(CTX, AGENT, verification)
     assert "breaks 1 existing" in text.splitlines()[1]
     assert "No new tests needed" not in text.splitlines()[1]
+
+
+def test_removed_or_renamed_tests_are_listed_so_a_reviewer_sees_them():
+    stack = {**FULL["stacks"]["backend"], "removed": ["tests.test_x::test_old_name"]}
+    text = report.render(CTX, AGENT, {**FULL, "stacks": {"backend": stack}})
+    assert "removed or renamed" in text and "tests.test_x::test_old_name" in text
+
+
+def test_test_ids_keep_their_words_apart():
+    stack = {**FULL["stacks"]["backend"], "breaks_existing": ["src/a.test.ts::treats an active task due today as overdue"]}
+    text = report.render(CTX, AGENT, {**FULL, "stacks": {"backend": stack}})
+    assert "treats an active task due today as overdue" in text

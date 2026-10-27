@@ -94,3 +94,18 @@ def test_the_test_module_is_found_from_the_id_for_both_stacks(tmp_path):
     assert verdict.test_file(tmp_path, "backend", "tests.features.test_router.TestClass::test_a") == "backend/tests/features/test_router.py"
     assert verdict.test_file(tmp_path, "frontend", "src/lib/http.test.ts::sends json") == "frontend/src/lib/http.test.ts"
     assert verdict.test_file(tmp_path, "backend", "tests.missing.test_x::test_a") == "backend/tests/missing/test_x.py"
+
+
+def test_renaming_a_test_in_a_touched_file_is_not_a_failure():
+    base = outcomes(new_file__old_name="passed", old_file__a="passed")
+    after = outcomes(new_file__new_name="passed", old_file__a="passed")
+    result = evaluate(base, [after, after, after])
+    assert result["ok"] is True
+    assert result["removed"] == ["new_file::old_name"] and result["new_tests"] == ["new_file::new_name"]
+
+
+def test_a_test_that_exists_in_some_runs_only_is_still_inconsistent():
+    base = outcomes(old_file__a="passed")
+    with_it = outcomes(old_file__a="passed", new_file__n="passed")
+    result = evaluate(base, [with_it, base_run := outcomes(old_file__a="passed"), with_it])
+    assert result["ok"] is False and "new_file::n" in result["flaky"]
