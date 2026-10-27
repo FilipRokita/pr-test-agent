@@ -27,13 +27,13 @@ cd frontend
 npm ci
 ```
 
-Development — http://localhost:5173:
+Development: http://localhost:5173:
 
 ```sh
 npm run dev
 ```
 
-Storybook — http://localhost:6006:
+Storybook: http://localhost:6006:
 
 ```sh
 npm run storybook
@@ -45,7 +45,7 @@ Tests:
 npm test
 ```
 
-Coverage — `frontend/coverage/index.html`:
+Coverage: `frontend/coverage/index.html`:
 
 ```sh
 npm run test:coverage
@@ -61,7 +61,7 @@ source backend/.venv/bin/activate
 python -m pip install -r backend/requirements.txt
 ```
 
-Development — http://localhost:8000/docs:
+Development: http://localhost:8000/docs:
 
 ```sh
 docker compose up -d --wait postgres
@@ -75,7 +75,7 @@ Tests (in `backend`, with `.venv` activated):
 python -m pytest
 ```
 
-Coverage — `backend/coverage/html/index.html`:
+Coverage: `backend/coverage/html/index.html`:
 
 ```sh
 python -m pytest --cov=app --cov-report=term-missing --cov-report=html
