@@ -205,6 +205,8 @@ def cmd_eval(args) -> int:
             finally:
                 sandbox.remove_tree(work)
             results.append(failures)
+            if failures:  # keep what the agent did, so a failing scenario can be diagnosed
+                _write(args.artifacts / f"failure-{scenario['id']}-{attempt}.json", {"failures": failures, "outcome": outcome})
             print(f"{scenario['id']} attempt {attempt}: {'passed' if not failures else 'FAILED: ' + '; '.join(failures)}", flush=True)
         rows.append({"name": scenario["name"], "results": results, "cost": cost, "turns": round(turns / max(len(results), 1))})
     table = evals.summary(rows)
