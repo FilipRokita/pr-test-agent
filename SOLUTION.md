@@ -88,17 +88,21 @@ model's own account. How the pieces fit: [architecture](docs/test-agent/architec
 stacks: a backend endpoint, a frontend API call, hook and panel, and cache refresh after a task changes. The bot's
 comment shows:
 
-- **Decisions per file.** `skip` for files that already had tests from an earlier proposal (restored before the
-  run), `add` for the three mutation hooks whose new cache refresh nothing tested, each with a reason.
-- **Skills invoked:** `analyze-changes`, `write-frontend-tests`, `review-test-quality`. 36 turns, 129 s.
+- **Result:** "5 added, 3 updated, all verified". The agent decided per file: `add` for the new repository method,
+  route, API call, hook and panel; `update` for the three mutation hooks whose existing tests now also check the new
+  cache refresh; `skip` for the type-only and excluded files, each with a reason.
+- **Skills invoked:** `analyze-changes`, `write-backend-tests`, `write-frontend-tests`, `review-test-quality`.
+  43 turns, 136 s.
 - **Verification:** three shuffled runs of the whole suite (backend 63 tests, frontend 88), changed-line coverage
   100% on both stacks, and 12 of 12 new tests fail when the pull request's source changes are removed.
-- The tests are in the stacked [pull request #23](https://github.com/FilipRokita/pr-test-agent/pull/23).
+- The tests are in the stacked [pull request #39](https://github.com/FilipRokita/pr-test-agent/pull/39), where CI
+  is green.
 
 Other behaviours, each on a real pull request: [#19](https://github.com/FilipRokita/pr-test-agent/pull/19) is
 titled "refactor, no behaviour change" but changes behaviour; the bot reports that it breaks an existing test and
 a suspected bug, and proposes no test that would hide it. [#18](https://github.com/FilipRokita/pr-test-agent/pull/18)
-changes behaviour on purpose; the bot updates the outdated test. [#20](https://github.com/FilipRokita/pr-test-agent/pull/20)
+changes behaviour on purpose; the bot updates the outdated test, in the stacked
+[pull request #38](https://github.com/FilipRokita/pr-test-agent/pull/38). [#20](https://github.com/FilipRokita/pr-test-agent/pull/20)
 only changes the README; the bot does not run.
 
 ## Evaluation
@@ -129,11 +133,6 @@ measurements found: [tuning history](docs/test-agent/tuning-history.md).
   measure how often a rare failure occurs.
 - Frontend coverage is reported in lines (100%); statements are 98.8% and branches 88.3%.
 - Costs shown are nominal (they are not what a subscription is billed).
-- The example comments were produced before two checks were added: the type check and the Prettier check of the
-  proposed files now count in the verdict, and a regression left in a file the agent also edits is reported as the
-  pull request's, not the proposal's. The demo pull requests were not re-run to spare the model budget.
-- In the comment on #17 the sentence "The PR already includes tests" refers to the bot's own earlier proposal, which
-  the workflow restores before each run; the pull request branch itself contains only source changes.
 
 More: [threat model](docs/test-agent/threat-model.md).
 
