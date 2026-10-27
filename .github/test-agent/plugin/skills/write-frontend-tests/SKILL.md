@@ -43,6 +43,8 @@ description: Conventions and patterns for Vitest + Testing Library unit tests of
   dates like `2026-02-30`, empty search).
 
 
+Annotated examples: [reference.md](reference.md).
+
 ## Run
 
 `run_tests` with `stack: "frontend"`, `paths` set to the files you touched; `coverage: true` for the

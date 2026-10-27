@@ -52,6 +52,8 @@ description: Conventions and patterns for pytest unit tests of the Taskly FastAP
   startup fails.
 
 
+Annotated examples: [reference.md](reference.md).
+
 ## Run
 
 `run_tests` with `stack: "backend"`, `paths` set to the files you touched; `coverage: true` for the
