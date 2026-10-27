@@ -46,3 +46,63 @@ it('creates a new task and reports a successful save', async () => {
   expect(create).toHaveBeenCalledWith(todoFixture)
   expect(update).not.toHaveBeenCalled()
 })
+
+it('updates an existing task by id and reports saved changes', async () => {
+  const user = userEvent.setup()
+  const create = vi.fn()
+  const update = vi.fn().mockResolvedValue(todoFixture)
+  vi.mocked(useCreateTodoMutation).mockReturnValue({
+    isPending: false,
+    error: null,
+    mutateAsync: create,
+  } as unknown as ReturnType<typeof useCreateTodoMutation>)
+  vi.mocked(useUpdateTodoMutation).mockReturnValue({
+    isPending: false,
+    error: null,
+    mutateAsync: update,
+  } as unknown as ReturnType<typeof useUpdateTodoMutation>)
+  const onSaved = vi.fn()
+  render(
+    <TodoEditor
+      todo={todoFixture}
+      busy={false}
+      onClose={vi.fn()}
+      onSaved={onSaved}
+    />,
+  )
+  expect(screen.getByRole('dialog', { name: 'Edit task' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Submit form' }))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith('Changes saved.'))
+  expect(update).toHaveBeenCalledWith({
+    id: todoFixture.id,
+    input: todoFixture,
+  })
+  expect(create).not.toHaveBeenCalled()
+})
+
+it('does not report a save when the update fails', async () => {
+  const user = userEvent.setup()
+  const update = vi.fn().mockRejectedValue(new Error('Conflict.'))
+  vi.mocked(useCreateTodoMutation).mockReturnValue({
+    isPending: false,
+    error: null,
+    mutateAsync: vi.fn(),
+  } as unknown as ReturnType<typeof useCreateTodoMutation>)
+  vi.mocked(useUpdateTodoMutation).mockReturnValue({
+    isPending: false,
+    error: null,
+    mutateAsync: update,
+  } as unknown as ReturnType<typeof useUpdateTodoMutation>)
+  const onSaved = vi.fn()
+  render(
+    <TodoEditor
+      todo={todoFixture}
+      busy={false}
+      onClose={vi.fn()}
+      onSaved={onSaved}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'Submit form' }))
+  await waitFor(() => expect(update).toHaveBeenCalledTimes(1))
+  expect(onSaved).not.toHaveBeenCalled()
+})
