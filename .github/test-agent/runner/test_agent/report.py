@@ -64,7 +64,7 @@ def _revert(stack: dict) -> str:
 
 
 def _ids(items) -> str:
-    return ", ".join(f"`{re.sub(r'[`|<>@#\s]', '', i)[:120]}`" for i in items[:10]) + (" and more" if len(items) > 10 else "")
+    return ", ".join(f"`{re.sub(r'\s+', ' ', re.sub(r'[`|<>@#]', '', i)).strip()[:120]}`" for i in items[:10]) + (" and more" if len(items) > 10 else "")
 
 
 def _problems(verification: dict) -> list[str]:
@@ -78,6 +78,8 @@ def _problems(verification: dict) -> list[str]:
                           ("broken_by_patch", "Existing tests broken by the proposal")):
             if stack.get(key):
                 lines += [f"**{text} ({label}):** {_ids(stack[key])}", ""]
+        if stack.get("removed"):
+            lines += [f"**Tests removed or renamed in the proposal ({label}):** {_ids(stack['removed'])}", ""]
         if stack.get("ids_changed"):
             lines += [f"**The set of existing {label} tests changed**, which a proposal must not do.", ""]
         weak = (stack.get("revert") or {}).get("weak") or []

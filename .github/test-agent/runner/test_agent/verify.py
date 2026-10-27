@@ -70,6 +70,7 @@ def _verify_stack(root, ctx, stack, patch_files, baseline, runner, measure, out_
         "new_tests": len(judged["new_tests"]),
         "new_test_ids": judged["new_tests"],
         "failing": judged["failing"],
+        "removed": judged["removed"],
         "flaky": judged["flaky"],
         "broken_by_patch": judged["broken_by_patch"],
         "breaks_existing": judged["breaks_existing"],

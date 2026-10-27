@@ -27,7 +27,9 @@ def evaluate(baseline: list[dict], runs: list[list[dict]], touched_files: set[st
     untouched_after = {i for i in maps[0] if i not in touched}
     ids_changed = untouched_before != untouched_after
 
-    failing = sorted(i for i in touched if any(m.get(i) != "passed" for m in maps))
+    # A test that is gone from every run was removed or renamed; that is shown, but it is not a failure.
+    failing = sorted(i for i in touched if any(i in m and m[i] != "passed" for m in maps))
+    removed = sorted(i for i in touched if i in base and not any(i in m for m in maps))
     flaky = sorted(i for i in everything if len({m.get(i) for m in maps}) > 1)
     broken = sorted(i for i in untouched_after if base.get(i) == "passed" and any(m.get(i) != "passed" for m in maps)
                     and i not in flaky)
@@ -36,6 +38,7 @@ def evaluate(baseline: list[dict], runs: list[list[dict]], touched_files: set[st
         "ok": not (failing or flaky or broken or ids_changed),
         "new_tests": sorted(i for i in maps[0] if i not in base),
         "failing": failing,
+        "removed": removed,
         "flaky": flaky,
         "broken_by_patch": broken,
         "breaks_existing": breaks_existing,
