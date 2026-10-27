@@ -84,7 +84,7 @@ model's own account. How the pieces fit: [architecture](docs/test-agent/architec
 
 ## 4. Example run
 
-[Pull request #17](https://github.com/FilipRokita/taskly-test-agent/pull/17) adds a statistics feature on both
+[Pull request #17](https://github.com/FilipRokita/pr-test-agent/pull/17) adds a statistics feature on both
 stacks: a backend endpoint, a frontend API call, hook and panel, and cache refresh after a task changes. The bot's
 comment shows:
 
@@ -93,12 +93,12 @@ comment shows:
 - **Skills invoked:** `analyze-changes`, `write-frontend-tests`, `review-test-quality`. 36 turns, 129 s.
 - **Verification:** three shuffled runs of the whole suite (backend 63 tests, frontend 88), changed-line coverage
   100% on both stacks, and 12 of 12 new tests fail when the pull request's source changes are removed.
-- The tests are in the stacked [pull request #23](https://github.com/FilipRokita/taskly-test-agent/pull/23).
+- The tests are in the stacked [pull request #23](https://github.com/FilipRokita/pr-test-agent/pull/23).
 
-Other behaviours, each on a real pull request: [#19](https://github.com/FilipRokita/taskly-test-agent/pull/19) is
+Other behaviours, each on a real pull request: [#19](https://github.com/FilipRokita/pr-test-agent/pull/19) is
 titled "refactor, no behaviour change" but changes behaviour; the bot reports that it breaks an existing test and
-a suspected bug, and proposes no test that would hide it. [#18](https://github.com/FilipRokita/taskly-test-agent/pull/18)
-changes behaviour on purpose; the bot updates the outdated test. [#20](https://github.com/FilipRokita/taskly-test-agent/pull/20)
+a suspected bug, and proposes no test that would hide it. [#18](https://github.com/FilipRokita/pr-test-agent/pull/18)
+changes behaviour on purpose; the bot updates the outdated test. [#20](https://github.com/FilipRokita/pr-test-agent/pull/20)
 only changes the README; the bot does not run.
 
 ## Evaluation
