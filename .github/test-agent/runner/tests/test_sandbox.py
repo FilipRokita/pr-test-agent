@@ -26,6 +26,11 @@ def test_sudo_is_added_only_when_requested(tmp_path):
     assert sandbox.build_command(["true"], out_dir=tmp_path, path_dirs=[], use_sudo=True)[:2] == ["sudo", "-n"]
 
 
+def test_temporary_files_go_to_the_output_directory(tmp_path):
+    cmd = sandbox.build_command(["true"], out_dir=tmp_path, path_dirs=[], use_sudo=False)
+    assert f"TMPDIR={tmp_path}/tmp" in cmd
+
+
 def test_inherited_environment_is_never_forwarded(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "super-secret-value")
     cmd = sandbox.build_command(["true"], out_dir=tmp_path, path_dirs=[], use_sudo=False)

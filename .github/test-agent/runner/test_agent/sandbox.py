@@ -19,6 +19,7 @@ def build_command(argv, *, out_dir, path_dirs, use_sudo, extra_env=None) -> list
     env = {
         "PATH": ":".join([*path_dirs, *BASE_PATH]),
         "HOME": str(out_dir),
+        "TMPDIR": str(Path(out_dir) / "tmp"),
         "CI": "1",
         "PYTHONDONTWRITEBYTECODE": "1",
         "COVERAGE_FILE": str(Path(out_dir) / ".coverage"),
@@ -61,6 +62,7 @@ def prepare_out_dir(out_dir: Path | str) -> Path:
     if out.exists():
         subprocess.run(_privileged(["rm", "-rf", str(out)]), check=True)
     out.mkdir(parents=True)
+    (out / "tmp").mkdir()
     subprocess.run(_privileged(["chown", "-R", f"{SANDBOX_UID}:{SANDBOX_UID}", str(out)]), check=True)
     # The runner reads results back, so others must be able to traverse and read.
     subprocess.run(_privileged(["chmod", "755", str(out)]), check=True)
