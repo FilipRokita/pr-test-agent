@@ -78,6 +78,7 @@ jobs:
         run: |
           python -m venv .github/test-agent/runner/.venv
           .github/test-agent/runner/.venv/bin/pip install --quiet -r .github/test-agent/runner/requirements-dev.txt
+      - run: bash .github/test-agent/runner/scripts/install_gitleaks.sh
       - run: bash .github/test-agent/runner/scripts/prepare_sandbox.sh
       - name: Runner tests
         working-directory: .github/test-agent/runner

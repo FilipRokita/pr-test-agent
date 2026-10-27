@@ -134,6 +134,8 @@ jobs:
           pattern: "*"
           merge-multiple: true
           path: ${{ env.AGENT_ARTIFACTS }}
+      - name: Install gitleaks
+        run: bash "$AGENT_RUNNER/scripts/install_gitleaks.sh"
       - name: Prepare the sandbox
         run: bash "$AGENT_RUNNER/scripts/prepare_sandbox.sh"
       - name: Verify the proposed tests

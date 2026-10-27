@@ -78,3 +78,49 @@ def test_long_text_is_capped():
 def test_missing_credentials_are_a_skip_not_a_failure():
     text = report.render(CTX, {"status": "skipped_no_credentials"}, None)
     assert "Skipped" in text.splitlines()[1] and "failed" not in text.splitlines()[1]
+
+
+FULL = {"status": "verified", "patch_files": ["backend/tests/test_x.py"], "warnings": ["backend/tests/old.py: net 1 assertions removed"],
+        "stacks": {"backend": {
+            "ok": True, "counts": {"passed": 22, "failed": 0, "error": 0, "skipped": 0},
+            "runs": [{"passed": 22, "failed": 0, "error": 0, "skipped": 0}] * 3,
+            "coverage": {"percent": 96.0, "covered": 48, "total": 50, "files": {}},
+            "revert": {"checked": True, "detect": 2, "total": 3, "weak": ["tests.test_x::test_weak"]},
+            "breaks_existing": ["tests.test_old::test_broken"], "failing": [], "flaky": [], "broken_by_patch": [],
+            "ids_changed": False}}}
+
+
+def test_the_table_shows_runs_changed_line_coverage_and_tests_that_detect_the_change():
+    text = report.render(CTX, AGENT, FULL)
+    assert "22 passed in each run" in text
+    assert "96.0% (48/50)" in text
+    assert "2 of 3" in text
+
+
+def test_existing_tests_broken_by_the_pull_request_are_called_out():
+    text = report.render(CTX, AGENT, FULL)
+    assert "breaks 1 existing backend tests" in text and "tests.test_old::test_broken" in text
+
+
+def test_weak_tests_and_warnings_are_listed():
+    text = report.render(CTX, AGENT, FULL)
+    assert "Weak tests" in text and "tests.test_x::test_weak" in text
+    assert "net 1 assertions removed" in text
+
+
+def test_missing_coverage_and_an_unchecked_revert_are_explained():
+    stack = {**FULL["stacks"]["backend"], "coverage": None, "revert": {"checked": False, "reason": "no new tests"}}
+    text = report.render(CTX, AGENT, {**FULL, "stacks": {"backend": stack}})
+    assert "not available" in text and "not checked: no new tests" in text
+
+
+def test_a_rejection_shows_the_reason():
+    rejected = {"status": "rejected", "patch_files": [], "stacks": {}, "warnings": [],
+                "reason": "backend/tests/test_a.py: would weaken the test suite"}
+    assert "weaken the test suite" in report.render(CTX, AGENT, rejected).splitlines()[1]
+
+
+def test_test_ids_from_the_model_cannot_inject_markup():
+    stack = {**FULL["stacks"]["backend"], "failing": ["x`<script>@a|b"]}
+    text = report.render(CTX, AGENT, {**FULL, "status": "failing", "stacks": {"backend": stack}})
+    assert "<script>" not in text and "@a" not in text
