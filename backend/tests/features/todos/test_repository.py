@@ -20,15 +20,15 @@ def frozen_now():
         yield clock
 
 
-def test_list_maps_models_and_orders_tasks_newest_first(model_factory, todo_values, todo):
+def test_list_maps_models_and_orders_tasks_oldest_first(model_factory, todo_values, todo):
     session = Mock(spec=Session)
     session.scalars.return_value = [model_factory(todo_values)]
     assert TodoRepository(session).list() == [todo]
     statement = session.scalars.call_args.args[0]
-    expected = select(TodoRecord).order_by(TodoRecord.created_at.desc(), TodoRecord.id.desc())
+    expected = select(TodoRecord).order_by(TodoRecord.created_at.asc(), TodoRecord.id.asc())
     assert statement.compare(expected)
     compiled = str(statement.compile(dialect=postgresql.dialect()))
-    assert "ORDER BY todos.created_at DESC, todos.id DESC" in compiled
+    assert "ORDER BY todos.created_at ASC, todos.id ASC" in compiled
 
 
 def test_get_returns_none_for_missing_task():
