@@ -27,23 +27,28 @@ def _report_path(stack: str, out_dir: Path) -> Path:
 
 
 def _revert_check(root: Path, ctx: dict, stack: str, test_files: list[str], new_ids: list[str], runner, out_dir) -> dict:
-    """Run the new tests against the changed source files as they were before the pull request."""
-    modified = [f["path"] for f in ctx["files"] if f["stack"] == stack and f["kind"] == "source" and f["status"] == "M"]
+    """Run the new tests against the source as it was before the pull request: edited files restored, added files removed."""
+    changed = [(f["path"], f["status"]) for f in ctx["files"]
+               if f["stack"] == stack and f["kind"] == "source" and f["status"] in ("M", "A")]
     if ctx.get("mode") == "backfill":
         return {"checked": False, "reason": "backfill: the existing code has no previous version to revert to"}
     if not new_ids:
         return {"checked": False, "reason": "no new tests"}
-    if not modified:
-        return {"checked": False, "reason": "the pull request only adds new source files, there is nothing to revert"}
+    if not changed:
+        return {"checked": False, "reason": "the pull request changes no source file of this stack"}
     saved = {}
     try:
-        for path in modified:
-            saved[path] = (root / path).read_bytes()
-            (root / path).write_text(git.run(root, "show", f"{ctx['base']}:{path}"))
+        for path, status in changed:
+            saved[path] = (root / path).read_bytes() if (root / path).exists() else None
+            if status == "A":
+                (root / path).unlink(missing_ok=True)  # the file did not exist before the pull request
+            else:
+                (root / path).write_text(git.run(root, "show", f"{ctx['base']}:{path}"))
         result = runner(root, stack, test_files, coverage=False, out_dir=out_dir)
     finally:
         for path, content in saved.items():
-            (root / path).write_bytes(content)
+            if content is not None:
+                (root / path).write_bytes(content)
     outcome = {t["id"]: t["outcome"] for t in _outcomes(result)}
     weak = [i for i in new_ids if outcome.get(i) == "passed"]
     return {"checked": True, "detect": len(new_ids) - len(weak), "total": len(new_ids), "weak": weak}

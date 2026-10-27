@@ -183,16 +183,22 @@ def test_the_revert_check_runs_only_the_proposed_test_files(repo):
     assert runner.calls[4]["paths"] == ["backend/tests/test_new.py"]
 
 
-def test_new_units_without_a_base_version_skip_the_revert_check(repo):
+def test_added_source_files_are_removed_for_the_revert_check_and_come_back_afterwards(repo):
     root, ctx = repo
-    ctx["files"][0]["status"] = "A"
-    base = run_result(case("passed", OLD))
-    after = run_result(case("passed", OLD), case("passed", NEW))
-    runner = ScriptedRunner(base, after, after, after)
-    result = verify.verify(root, ctx, GOOD_PATCH, runner=runner, scanner=no_secrets, measure=full_coverage,
+    ctx["files"] = [{"path": "backend/app/added.py", "stack": "backend", "kind": "source", "status": "A"}]
+    (root / "backend/app/added.py").write_text("def g():\n    return 3\n")
+    seen = {}
+
+    def spying(root_, stack, paths, **kw):
+        seen.setdefault("present", []).append((root_ / "backend/app/added.py").exists())
+        return runner(root_, stack, paths, **kw)
+
+    runner = healthy_runner()
+    result = verify.verify(root, ctx, GOOD_PATCH, runner=spying, scanner=no_secrets, measure=full_coverage,
                            out_root=root.parent / "out")
-    assert result["stacks"]["backend"]["revert"]["checked"] is False
-    assert len(runner.calls) == 4
+    assert seen["present"][:4] == [True, True, True, True] and seen["present"][4] is False
+    assert (root / "backend/app/added.py").read_text() == "def g():\n    return 3\n"
+    assert result["stacks"]["backend"]["revert"]["checked"] is True
 
 
 def test_a_missing_report_in_the_baseline_is_an_error_not_a_pass(repo):
