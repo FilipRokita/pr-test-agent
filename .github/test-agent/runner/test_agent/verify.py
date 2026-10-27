@@ -29,6 +29,8 @@ def _report_path(stack: str, out_dir: Path) -> Path:
 def _revert_check(root: Path, ctx: dict, stack: str, test_files: list[str], new_ids: list[str], runner, out_dir) -> dict:
     """Run the new tests against the changed source files as they were before the pull request."""
     modified = [f["path"] for f in ctx["files"] if f["stack"] == stack and f["kind"] == "source" and f["status"] == "M"]
+    if ctx.get("mode") == "backfill":
+        return {"checked": False, "reason": "backfill: the existing code has no previous version to revert to"}
     if not new_ids:
         return {"checked": False, "reason": "no new tests"}
     if not modified:

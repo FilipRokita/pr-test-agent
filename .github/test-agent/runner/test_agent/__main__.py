@@ -6,6 +6,7 @@ patch    turn the agent's working tree changes into a patch (no credential)
 verify   apply the patch and run the tests in the sandbox (no credential)
 restore  put the previous proposal back in the working tree (read-only token)
 publish  push the proposal, open or update the stacked pull request, write the comment (the only write token)
+backfill add missing tests to the existing code of one stack (a local run of the same agent and checks)
 cleanup  a pull request was closed: close its stacked pull request and delete the test branch
 """
 
@@ -14,9 +15,10 @@ import asyncio
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
-from . import agent, context, git, github, patch, publish, report, restore, schema, verify
+from . import agent, backfill, context, git, github, patch, publish, report, restore, sandbox, schema, tools, verify
 
 
 def _read(path: Path):
@@ -134,8 +136,57 @@ def cmd_cleanup(args) -> int:
     return 0
 
 
+def cmd_backfill(args) -> int:
+    stack = args.stack
+    head = git.run(args.root, "rev-parse", "HEAD").strip()
+    work = Path(tempfile.mkdtemp(prefix=f"backfill-{stack}-"))
+    sandbox.make_traversable(work)
+    with backfill.worktree(args.root, work / "agent-tree") as tree:
+        baseline = tools.run_stack(tree, stack, [], coverage=True, out_dir=sandbox.prepare_out_dir(work / "baseline"))
+        if baseline.get("counts") is None:
+            print(f"the baseline run produced no report: {baseline.get('error')}", file=sys.stderr)
+            return 2
+        if stack == "backend":
+            raw = sandbox.read_output(work / "baseline", "coverage.json")
+            gaps, before = backfill.backend_gaps(raw), backfill.backend_total(raw)
+        else:
+            raw = sandbox.read_output(work / "baseline" / "cov", "lcov.info")
+            gaps, before = backfill.frontend_gaps(raw), backfill.frontend_total(raw)
+        gaps = backfill.select(gaps, args.files.split(",") if args.files else None)
+        print(f"{stack}: coverage {before}%, {len(gaps)} files with gaps")
+        ctx = backfill.make_context(stack, gaps, head)
+        reuse = args.reuse and (args.artifacts / "agent.patch").exists() and (args.artifacts / "agent-result.json").exists()
+        if reuse:
+            result, patch_text = _read(args.artifacts / "agent-result.json"), (args.artifacts / "agent.patch").read_text()
+            print("reusing the agent result and patch found in the artifacts directory")
+        else:
+            model = args.model or os.environ.get("TEST_AGENT_MODEL") or "claude-opus-5-5"
+            result = asyncio.run(agent.run_agent(tree, backfill.render_task(stack, gaps), model=model,
+                                                 max_turns=args.max_turns, max_budget_usd=args.budget))
+            if result["structured_output"] is not None:
+                result["structured_output"] = schema.normalise(result["structured_output"], [g["path"] for g in gaps])
+            patch_text = patch.create(tree)
+    if not reuse:
+        _write(args.artifacts / "agent-result.json", result)
+        _write(args.artifacts / "agent.patch", patch_text)
+    print(f"agent status={result['status']} turns={result['turns']} cost={result['cost_usd']} skills={result['skills_used']}")
+    if result["status"] != "ok":
+        return 1
+
+    with backfill.worktree(args.root, work / "verify-tree") as tree:
+        verification = verify.verify(tree, ctx, patch_text, measure=backfill.measure, out_root=work / "verify-out")
+    _write(args.artifacts / "verification.json", verification)
+    stack_result = verification["stacks"].get(stack, {})
+    after = (stack_result.get("coverage") or {}).get("percent")
+    print(f"verification status={verification['status']} files={verification['patch_files']} coverage {before}% -> {after}%")
+    if verification["status"] == "verified" and after is not None:
+        _write(args.artifacts / "backfill-report.md", backfill.report_markdown(
+            stack, before=before, after=after, agent=result, result=result["structured_output"], verification=verification))
+    return 0 if verification["status"] == "verified" else 1
+
+
 COMMANDS = {"context": cmd_context, "restore": cmd_restore, "generate": cmd_generate, "patch": cmd_patch,
-            "verify": cmd_verify, "publish": cmd_publish, "cleanup": cmd_cleanup}
+            "verify": cmd_verify, "publish": cmd_publish, "cleanup": cmd_cleanup, "backfill": cmd_backfill}
 
 
 def main(argv=None) -> int:
@@ -145,6 +196,12 @@ def main(argv=None) -> int:
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository checkout")
     parser.add_argument("--artifacts", type=Path, default=Path("test-agent-artifacts"),
                         help="directory for the files passed between jobs")
+    parser.add_argument("--stack", choices=["backend", "frontend"], help="backfill: the stack to work on")
+    parser.add_argument("--files", help="backfill: comma separated repository paths to limit the work to")
+    parser.add_argument("--model", help="backfill: model id (default TEST_AGENT_MODEL or claude-opus-5-5)")
+    parser.add_argument("--reuse", action="store_true", help="backfill: verify the patch already in --artifacts instead of running the agent")
+    parser.add_argument("--max-turns", type=int, default=150)
+    parser.add_argument("--budget", type=float, default=15.0, help="backfill: spending limit in USD for the agent run")
     args = parser.parse_args(argv)
     args.root = args.root.resolve()
     args.artifacts = args.artifacts.resolve()
