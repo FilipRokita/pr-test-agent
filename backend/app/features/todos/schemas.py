@@ -36,6 +36,13 @@ class TodoUpdate(BaseModel):
         return validate_patch_fields(self)
 
 
+class TodoStats(BaseModel):
+    total: int
+    completed: int
+    active: int
+    overdue: int
+
+
 class Todo(TodoCreate):
     id: int
     created_at: datetime
