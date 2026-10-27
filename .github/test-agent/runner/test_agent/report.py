@@ -84,7 +84,7 @@ def _problems(verification: dict) -> list[str]:
             lines += [f"**The set of existing {label} tests changed**, which a proposal must not do.", ""]
         weak = (stack.get("revert") or {}).get("weak") or []
         if weak:
-            lines += [f"**Weak tests ({label}):** these pass even with the old source, so they do not detect "
+            lines += [f"**Weak tests ({label}):** these also pass without the pull request's source changes, so they do not detect "
                       f"the change: {_ids(weak)}", ""]
     for warning in verification.get("warnings") or []:
         lines += [f"Note: {_text(warning, 200)}", ""]
@@ -162,7 +162,7 @@ def render(ctx: dict, agent: dict | None, verification: dict | None, run_url: st
         lines += [_text(output["summary"], 600), ""]
 
     if verification and verification.get("stacks"):
-        lines += ["| Stack | Tests (3 shuffled runs) | Changed-line coverage | New tests that detect the change |",
+        lines += ["| Stack | Tests (3 shuffled runs) | Changed-line coverage | New tests that fail without the change |",
                   "|---|---|---|---|"]
         for name, stack in verification["stacks"].items():
             lines.append(f"| {_text(name, 20)} | {_runs(stack)} | {_coverage(stack)} | {_revert(stack)} |")
