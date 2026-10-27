@@ -90,7 +90,8 @@ dependencies current. Security reports: see [SECURITY.md](SECURITY.md).
 
 ## Test agent
 
-Pull requests from this repository get unit tests proposed by an agent. The workflow is
+Pull requests from this repository get unit tests proposed by an agent; see [SOLUTION.md](SOLUTION.md) for how it
+works and [docs/](docs/architecture.md) for details. The workflow is
 `.github/workflows/test-agent.yml`; the agent, its skills and the runner that drives it live in
 `.github/test-agent/`.
 
