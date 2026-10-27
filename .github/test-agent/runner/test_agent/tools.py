@@ -61,6 +61,16 @@ def _tail(text: str) -> str:
     return text[-OUTPUT_TAIL:]
 
 
+def check_format(root: Path, stack: str, files: list[str], out_dir: Path, timeout: int = 300) -> dict | None:
+    """Prettier check of the proposed frontend files, as the CI gate runs it. Other stacks have no such check."""
+    relative = [f.removeprefix("frontend/") for f in files if f.startswith("frontend/")]
+    if stack != "frontend" or not relative:
+        return None
+    proc = sandbox.run(["npx", "prettier", "--check", *relative], cwd=Path(root) / "frontend", out_dir=out_dir,
+                       path_dirs=_path_dirs(Path(root), stack), timeout=timeout)
+    return {"ok": proc.returncode == 0, "output": "" if proc.returncode == 0 else _tail(proc.stdout + proc.stderr)}
+
+
 def run_stack(root: Path, stack: str, paths: list[str], *, coverage: bool, out_dir: Path,
               timeout: int = 600) -> dict:
     """Run one stack's tests. `out_dir` must come from sandbox.prepare_out_dir."""

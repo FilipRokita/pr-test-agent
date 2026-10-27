@@ -115,3 +115,21 @@ def test_a_single_backend_file_can_be_selected(out_dir):
                              coverage=False, out_dir=out_dir)
     assert result["ok"] is True, result["output"]
     assert {t["id"].split("::")[0] for t in result["tests"]} == {"tests.features.todos.test_validators"}
+
+
+def test_only_frontend_files_get_a_format_check(tmp_path):
+    assert tools.check_format(REPO, "backend", ["backend/tests/x.py"], tmp_path) is None
+    assert tools.check_format(REPO, "frontend", [], tmp_path) is None
+
+
+@needs_env
+def test_the_format_check_accepts_a_formatted_file_and_rejects_an_unformatted_one(out_dir):
+    good = "frontend/src/hooks/useNotice.test.ts"
+    assert tools.check_format(REPO, "frontend", [good], out_dir)["ok"] is True
+    bad = REPO / "frontend/src/zz_unformatted.test.ts"
+    bad.write_text("it( 'a',()=>{expect(1).toBe( 1 )})\n")
+    try:
+        result = tools.check_format(REPO, "frontend", ["frontend/src/zz_unformatted.test.ts"], out_dir)
+    finally:
+        bad.unlink()
+    assert result["ok"] is False and "zz_unformatted" in result["output"]

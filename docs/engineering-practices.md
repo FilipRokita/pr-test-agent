@@ -9,8 +9,8 @@ What was done around the agent to keep the repository safe and maintainable, and
 | Least privilege: `permissions: {}` for the workflow and a minimal set per job; the model credential only in the step that runs the agent; the write token only in `publish` and `cleanup` | `test-agent.yml` |
 | Workflow static analysis: actionlint and zizmor on every pull request | `ci.yml` (job `workflow-lint`) |
 | Secret scanning: gitleaks over the whole history on every pull request, and on every file the agent proposes | `ci.yml` (job `secret-scan`), `runner/test_agent/secrets.py` |
-| Dependency updates: Dependabot for GitHub Actions, pip and npm, grouped weekly | `.github/dependabot.yml` |
-| Reproducible installs: `npm ci --ignore-scripts`, pinned Python requirements | workflows, `runner/requirements.txt` |
+| Dependency updates: Dependabot for GitHub Actions and the application's pip and npm dependencies, grouped weekly (the runner's own requirements are not covered) | `.github/dependabot.yml` |
+| Installs: `npm ci --ignore-scripts`; the runner's three direct Python dependencies are pinned, transitive ones and package hashes are not | workflows, `runner/requirements.txt` |
 | Concurrency and timeouts: one run per pull request, older runs cancelled, a timeout on every job | `test-agent.yml` |
 | Line endings fixed to LF | `.gitattributes` |
 | Security policy | `SECURITY.md`, [threat model](threat-model.md) |

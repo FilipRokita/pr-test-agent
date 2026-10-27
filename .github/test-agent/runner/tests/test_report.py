@@ -176,3 +176,27 @@ def test_test_ids_keep_their_words_apart():
     stack = {**FULL["stacks"]["backend"], "breaks_existing": ["src/a.test.ts::treats an active task due today as overdue"]}
     text = report.render(CTX, AGENT, {**FULL, "stacks": {"backend": stack}})
     assert "treats an active task due today as overdue" in text
+
+
+def test_type_and_format_problems_of_a_proposal_are_reported_in_the_comment():
+    stack = {"ok": False, "counts": {"passed": 3, "failed": 0, "error": 0, "skipped": 0}, "runs": [],
+             "typecheck": {"ok": False, "output": "TS2322", "preexisting": False},
+             "format": {"ok": False, "output": "src/a.test.ts"}}
+    verification = {"status": "failing", "patch_files": ["frontend/src/a.test.ts"], "warnings": [],
+                    "stacks": {"frontend": stack}}
+    text = report.render(CTX, AGENT, verification)
+    assert "TypeScript errors" in text and "Prettier" in text
+
+
+def test_a_type_error_that_was_already_there_is_not_blamed_on_the_proposal():
+    stack = {"ok": True, "counts": {"passed": 3, "failed": 0, "error": 0, "skipped": 0}, "runs": [],
+             "typecheck": {"ok": False, "output": "TS2322", "preexisting": True}, "format": None}
+    verification = {"status": "verified", "patch_files": ["frontend/src/a.test.ts"], "warnings": [],
+                    "stacks": {"frontend": stack}}
+    text = report.render(CTX, AGENT, verification)
+    assert "already failed type checking" in text and "proposal" in text
+
+
+def test_the_cost_is_rounded():
+    agent = {**AGENT, "cost_usd": 0.5019716999999999}
+    assert "cost: 0.50 USD (nominal)" in report.render(CTX, agent, VERIFIED)
