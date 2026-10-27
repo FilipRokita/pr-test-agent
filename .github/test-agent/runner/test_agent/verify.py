@@ -54,7 +54,14 @@ def _revert_check(root: Path, ctx: dict, stack: str, test_files: list[str], new_
     return {"checked": True, "detect": len(new_ids) - len(weak), "total": len(new_ids), "weak": weak}
 
 
-def _verify_stack(root, ctx, stack, patch_files, baseline, runner, measure, out_root) -> dict:
+def _typecheck(baseline: dict, after: dict) -> dict | None:
+    if after.get("typecheck_ok") is None:
+        return None
+    preexisting = baseline.get("typecheck_ok") is False
+    return {"ok": after["typecheck_ok"], "output": after.get("typecheck_output", ""), "preexisting": preexisting}
+
+
+def _verify_stack(root, ctx, stack, patch_files, baseline, runner, measure, formatter, out_root) -> dict:
     runs, reports = [], []
     for index in range(1, RUNS + 1):
         out_dir = sandbox.prepare_out_dir(out_root / f"{stack}-run{index}")
@@ -68,8 +75,14 @@ def _verify_stack(root, ctx, stack, patch_files, baseline, runner, measure, out_
     judged = verdict.evaluate(_outcomes(baseline), [_outcomes(r) for r in runs], set(patch_files),
                               lambda test_id: verdict.test_file(root, stack, test_id))
     stack_files = [p for p in patch_files if _stack_of(p) == stack]
+    typecheck = _typecheck(baseline, runs[0])
+    checked_format = formatter(root, stack, [p for p in stack_files if (root / p).is_file()],
+                               sandbox.prepare_out_dir(out_root / f"{stack}-format"))
+    type_ok = typecheck is None or typecheck["ok"] or typecheck["preexisting"]
     out = {
-        "ok": judged["ok"],
+        "ok": judged["ok"] and type_ok and (checked_format is None or checked_format["ok"]),
+        "typecheck": typecheck,
+        "format": checked_format,
         "counts": runs[0]["counts"],
         "runs": [r["counts"] for r in runs],
         "new_tests": len(judged["new_tests"]),
@@ -107,7 +120,7 @@ def _without_proposal(root: Path, ctx: dict, runner, out_root: Path) -> dict:
 
 
 def verify(root: Path, ctx: dict, patch_text: str, *, runner=tools.run_stack, scanner=secrets.scan,
-           measure=coverage.changed_lines, out_root: Path | None = None) -> dict:
+           measure=coverage.changed_lines, formatter=tools.check_format, out_root: Path | None = None) -> dict:
     root = Path(root)
     if not patch_text.strip():
         return _without_proposal(root, ctx, runner, Path(out_root) if out_root else root.parent / "test-agent-out")
@@ -141,7 +154,7 @@ def verify(root: Path, ctx: dict, patch_text: str, *, runner=tools.run_stack, sc
         return {"status": "rejected", "patch_files": [], "stacks": {}, "warnings": checked.warnings,
                 "reason": f"secret scan found: {rules}"}
 
-    results = {stack: _verify_stack(root, ctx, stack, patch_files, baselines[stack], runner, measure, out_root)
+    results = {stack: _verify_stack(root, ctx, stack, patch_files, baselines[stack], runner, measure, formatter, out_root)
                for stack in stacks}
     return {"status": "verified" if all(r["ok"] for r in results.values()) else "failing",
             "patch_files": patch_files, "stacks": results, "warnings": checked.warnings}

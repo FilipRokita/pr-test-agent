@@ -16,7 +16,7 @@ integrity of CI results, and the `main` branch.
 | Author with write access to this repository | Trusted. They can already edit workflows. |
 | Pull request from a fork | Not served. `pull_request` gives forks no secrets; the workflow also skips them. |
 | Text in code, comments, pull request title and body, test output | Untrusted input to the model. |
-| Dependencies installed by `npm ci` and `pip install` | Untrusted. Installed without lifecycle scripts, in steps that have no credential. |
+| Dependencies installed by `npm ci` and `pip install` | Untrusted. `npm ci` runs with `--ignore-scripts`; `pip` can still run build code for source distributions. Both run in steps that have no model credential. |
 
 ## Attacks and controls
 

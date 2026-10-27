@@ -109,3 +109,18 @@ def test_a_test_that_exists_in_some_runs_only_is_still_inconsistent():
     with_it = outcomes(old_file__a="passed", new_file__n="passed")
     result = evaluate(base, [with_it, base_run := outcomes(old_file__a="passed"), with_it])
     assert result["ok"] is False and "new_file::n" in result["flaky"]
+
+
+def test_a_regression_left_in_a_touched_file_is_the_pull_requests_fault_not_the_proposals():
+    base = outcomes(new_file__regression="failed", old_file__a="passed")
+    after = outcomes(new_file__regression="failed", new_file__added="passed", old_file__a="passed")
+    result = evaluate(base, [after, after, after])
+    assert result["ok"] is True and result["failing"] == []
+    assert result["breaks_existing"] == ["new_file::regression"]
+
+
+def test_a_touched_test_that_passed_before_and_fails_after_is_still_the_proposals_fault():
+    base = outcomes(new_file__t="passed")
+    after = outcomes(new_file__t="failed")
+    result = evaluate(base, [after, after, after])
+    assert result["ok"] is False and result["failing"] == ["new_file::t"]

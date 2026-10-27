@@ -13,7 +13,7 @@ same agent was used to fill the missing tests of the existing application (backe
 | How results are delivered | A stacked pull request into the branch of the original one, plus one comment edited in place | No race with the author's pushes, a human decides what to merge, and CI runs on it. |
 | Who holds what | Four jobs: `context` (read), `generate` (model credential), `verify` (nothing), `publish` (write token) | The model never holds the write token; the job that writes never runs the tests. |
 | Where tests run | Unprivileged user, empty environment, no network, read-only workspace, no access to `.git` | Model-written code must not reach the credential or the repository. |
-| What "verified" means | A baseline run, then three runs in random order, a verdict per test, changed-line coverage, a secret scan, and the new tests run against the old source | Numbers come from deterministic steps, never from the model. |
+| What "verified" means | A baseline run, then three runs in random order, a verdict per test, type check and Prettier check, changed-line coverage, a secret scan, and the new tests run against the old source | Numbers come from deterministic steps, never from the model. |
 | Coverage metric | Coverage of the lines the pull request changed | Total coverage hides an update that tests nothing. |
 | Status of the bot | Advisory; the ordinary CI is the merge gate | A model outage must not block merging. |
 | Skills | The open Agent Skills format, five skills | Reusable across the pull request workflow, the backfill, the evaluations and local use. |
@@ -98,7 +98,9 @@ measurements found: [tuning history](docs/tuning-history.md).
 - Pull requests come from people with write access to this repository; forks are not served.
 - Only unit tests are in scope: no database, no network, no end-to-end tests.
 - Application code is never changed by the bot; a suspected bug is reported, not fixed.
-- A Claude subscription token is acceptable for this repository; production would use an API key with a limit.
+- A Claude subscription token is acceptable for this repository; production would use an API key with a limit. Every
+  run shown here used a subscription token. The workflow also accepts `ANTHROPIC_API_KEY` through the same SDK, but
+  that path was not exercised.
 
 ## 6. Limitations
 
@@ -113,6 +115,11 @@ measurements found: [tuning history](docs/tuning-history.md).
   measure how often a rare failure occurs.
 - Frontend coverage is reported in lines (100%); statements are 98.8% and branches 88.3%.
 - Costs shown are nominal (they are not what a subscription is billed).
+- The example comments were produced before two checks were added: the type check and the Prettier check of the
+  proposed files now count in the verdict, and a regression left in a file the agent also edits is reported as the
+  pull request's, not the proposal's. The demo pull requests were not re-run to spare the model budget.
+- In the comment on #17 the sentence "The PR already includes tests" refers to the bot's own earlier proposal, which
+  the workflow restores before each run; the pull request branch itself contains only source changes.
 
 More: [threat model](docs/threat-model.md).
 

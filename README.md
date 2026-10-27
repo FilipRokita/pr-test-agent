@@ -95,7 +95,9 @@ works and [docs/](docs/architecture.md) for details. The workflow is
 `.github/workflows/test-agent.yml`; the agent, its skills and the runner that drives it live in
 `.github/test-agent/`.
 
-Runner tests (no network, no credentials; the sandbox tests need `sudo` or root):
+Runner tests (no network, no credentials). The sandbox tests need `unshare`, `setpriv`, `sudo` or root, `acl`, the
+backend `.venv` and `frontend/node_modules` (see above), and the secret-scan tests need `gitleaks`; without them
+those tests are skipped, not failed:
 
 ```sh
 python -m venv .github/test-agent/runner/.venv

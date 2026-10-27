@@ -71,10 +71,14 @@ def full_coverage(root, report, base, stack="backend"):
     return {"covered": 2, "total": 2, "percent": 100.0, "files": {}}
 
 
-def go(repo, patch_text, runner, *, scanner=no_secrets, measure=full_coverage):
+def fine_format(root, stack, files, out_dir):
+    return {"ok": True, "output": ""}
+
+
+def go(repo, patch_text, runner, *, scanner=no_secrets, measure=full_coverage, formatter=fine_format):
     root, ctx = repo
     return verify.verify(root, ctx, patch_text, runner=runner, scanner=scanner, measure=measure,
-                         out_root=root.parent / "out")
+                         formatter=formatter, out_root=root.parent / "out")
 
 
 def healthy_runner():
@@ -205,3 +209,70 @@ def test_a_missing_report_in_the_baseline_is_an_error_not_a_pass(repo):
     broken = {"stack": "backend", "ok": False, "counts": None, "tests": [], "error": "test report is missing"}
     result = go(repo, GOOD_PATCH, ScriptedRunner(broken))
     assert result["status"] == "error" and "test report is missing" in result["reason"]
+
+
+FRONT_PATCH = (
+    "diff --git a/frontend/src/a.test.ts b/frontend/src/a.test.ts\nnew file mode 100644\n"
+    "--- /dev/null\n+++ b/frontend/src/a.test.ts\n@@ -0,0 +1,3 @@\n+it('a', () => {\n+  expect(1).toBe(1)\n+})\n"
+)
+FRONT_OLD = "src/old.test.ts::old"
+FRONT_NEW = "src/a.test.ts::a"
+
+
+def front_result(*tests, typecheck=True):
+    result = run_result(*tests)
+    return {**result, "stack": "frontend", "typecheck_ok": typecheck, "typecheck_output": "" if typecheck else "TS2322"}
+
+
+@pytest.fixture
+def front_repo(tmp_path):
+    (tmp_path / "frontend/src").mkdir(parents=True)
+    (tmp_path / "frontend/src/old.test.ts").write_text("it('old', () => { expect(1).toBe(1) })\n")
+    (tmp_path / "frontend/src/x.ts").write_text("export const x = 1\n")
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", "-A"); _git(tmp_path, "commit", "-q", "-m", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    (tmp_path / "frontend/src/x.ts").write_text("export const x = 2\n")
+    _git(tmp_path, "commit", "-qam", "change")
+    ctx = {"base": base, "stacks": ["frontend"], "should_run": True, "files": [
+        {"path": "frontend/src/x.ts", "stack": "frontend", "kind": "source", "status": "M"}]}
+    return tmp_path, ctx
+
+
+def front_runner(after_typecheck=True, base_typecheck=True):
+    base = front_result(case("passed", FRONT_OLD), typecheck=base_typecheck)
+    after = front_result(case("passed", FRONT_OLD), case("passed", FRONT_NEW), typecheck=after_typecheck)
+    return ScriptedRunner(base, after, after, after, front_result(case("failed", FRONT_NEW)))
+
+
+def test_a_type_error_introduced_by_the_proposal_fails_it(front_repo):
+    result = go(front_repo, FRONT_PATCH, front_runner(after_typecheck=False))
+    stack = result["stacks"]["frontend"]
+    assert result["status"] == "failing" and stack["ok"] is False
+    assert stack["typecheck"] == {"ok": False, "output": "TS2322", "preexisting": False}
+
+
+def test_a_type_error_that_already_existed_is_reported_and_does_not_fail_the_proposal(front_repo):
+    result = go(front_repo, FRONT_PATCH, front_runner(after_typecheck=False, base_typecheck=False))
+    stack = result["stacks"]["frontend"]
+    assert result["status"] == "verified"
+    assert stack["typecheck"]["preexisting"] is True
+
+
+def test_badly_formatted_proposed_files_fail_the_proposal(front_repo):
+    seen = []
+
+    def formatter(root, stack, files, out_dir):
+        seen.append((stack, files))
+        return {"ok": False, "output": "Code style issues found in the above file."}
+
+    result = go(front_repo, FRONT_PATCH, front_runner(), formatter=formatter)
+    stack = result["stacks"]["frontend"]
+    assert result["status"] == "failing" and stack["format"]["ok"] is False
+    assert seen == [("frontend", ["frontend/src/a.test.ts"])]
+
+
+def test_the_backend_has_no_type_or_format_check(repo):
+    result = go(repo, GOOD_PATCH, healthy_runner(), formatter=verify.tools.check_format)
+    stack = result["stacks"]["backend"]
+    assert stack["typecheck"] is None and stack["format"] is None

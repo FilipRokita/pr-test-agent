@@ -82,6 +82,14 @@ def _problems(verification: dict) -> list[str]:
             lines += [f"**Tests removed or renamed in the proposal ({label}):** {_ids(stack['removed'])}", ""]
         if stack.get("ids_changed"):
             lines += [f"**The set of existing {label} tests changed**, which a proposal must not do.", ""]
+        typecheck = stack.get("typecheck") or {}
+        if typecheck.get("ok") is False:
+            if typecheck.get("preexisting"):
+                lines += [f"Note: the {label} sources already failed type checking before the proposal.", ""]
+            else:
+                lines += [f"**The proposal introduces TypeScript errors ({label}):** {_text(typecheck.get('output'), 300)}", ""]
+        if (stack.get("format") or {}).get("ok") is False:
+            lines += [f"**The proposed files are not formatted with Prettier ({label}):** {_text(stack['format'].get('output'), 300)}", ""]
         weak = (stack.get("revert") or {}).get("weak") or []
         if weak:
             lines += [f"**Weak tests ({label}):** these also pass without the pull request's source changes, so they do not detect "
@@ -193,7 +201,7 @@ def render(ctx: dict, agent: dict | None, verification: dict | None, run_url: st
             f"model: {_text(agent.get('model'), 60)}",
             f"turns: {int(agent.get('turns') or 0)}",
             f"duration: {agent.get('duration_s')} s",
-            f"cost: {agent.get('cost_usd')} USD (nominal)",
+            f"cost: {float(agent.get('cost_usd') or 0):.2f} USD (nominal)",
             "skills invoked: " + (", ".join(_text(s, 40) for s in agent.get("skills_used", [])) or "none"),
         ]
         if run_url:
