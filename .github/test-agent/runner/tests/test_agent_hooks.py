@@ -92,3 +92,31 @@ def test_skills_used_come_from_skill_tool_calls_in_order_without_repeats():
         ("Skill", {"skill": "test-agent:analyze-changes"}),
     ]
     assert agent.skills_used(calls) == ["analyze-changes", "write-backend-tests"]
+
+
+def test_the_options_close_every_tool_source_except_the_plugin_and_run_tests(tmp_path):
+    options = agent.build_options(tmp_path, tmp_path, model="m", effort="high", max_turns=5, max_budget_usd=1)
+    assert options.strict_mcp_config is True                      # only the MCP servers we pass are used
+    assert options.env["ENABLE_CLAUDEAI_MCP_SERVERS"] == "false"  # no account connectors such as mail or calendar
+    assert options.setting_sources == []
+    assert sorted(options.tools) == ["Edit", "Glob", "Grep", "Read", "Skill", "Write"]
+    assert set(options.mcp_servers) == {"taskly"}
+
+
+def test_a_session_with_unexpected_tools_is_stopped_before_the_model_acts(tmp_path, monkeypatch):
+    from claude_agent_sdk import AssistantMessage, SystemMessage, TextBlock
+
+    consumed = []
+
+    async def fake_query(prompt, options):
+        yield SystemMessage(subtype="init", data={**{"tools": [*GOOD_INIT["tools"], "mcp__connector__send_mail"],
+                                                      "skills": GOOD_INIT["skills"], "agents": GOOD_INIT["agents"],
+                                                      "plugins": GOOD_INIT["plugins"], "model": "m"}})
+        consumed.append("after init")
+        yield AssistantMessage(content=[TextBlock(text="acting")], model="m")
+
+    monkeypatch.setattr(agent, "query", fake_query)
+    result = asyncio.run(agent.run_agent(tmp_path, "task", model="m"))
+    assert result["status"] == "agent_error"
+    assert any("mcp__connector__send_mail" in p for p in result["problems"])
+    assert consumed == []

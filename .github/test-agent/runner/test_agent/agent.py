@@ -115,33 +115,41 @@ def build_run_tests_tool(root: Path, work_dir: Path):
     return run_tests
 
 
+def build_options(root: Path, work: Path, *, model: str, effort: str, max_turns: int, max_budget_usd: float) -> ClaudeAgentOptions:
+    server = create_sdk_mcp_server("taskly", "1.0.0", [build_run_tests_tool(root, work)])
+    return ClaudeAgentOptions(
+        cwd=str(root),
+        plugins=[{"type": "local", "path": str(PLUGIN_DIR)}],
+        setting_sources=[],
+        skills=[f"test-agent:{name}" for name in SKILLS],
+        tools=["Read", "Glob", "Grep", "Write", "Edit", "Skill"],
+        allowed_tools=["Read", "Glob", "Grep", "Skill", "Write", "Edit", "mcp__taskly__run_tests"],
+        mcp_servers={"taskly": server},
+        strict_mcp_config=True,
+        hooks={"PreToolUse": [HookMatcher(matcher="Write|Edit", hooks=[write_hook(root)]),
+                              HookMatcher(matcher="Read|Glob|Grep", hooks=[read_hook(root)])]},
+        output_format={"type": "json_schema", "schema": schema.SCHEMA},
+        model=model, effort=effort, max_turns=max_turns, max_budget_usd=max_budget_usd,
+        env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "DISABLE_TELEMETRY": "1", "ENABLE_CLAUDEAI_MCP_SERVERS": "false"},
+    )
+
+
 async def run_agent(root: Path, task: str, *, model: str, effort: str = "high", max_turns: int = 80,
                     max_budget_usd: float = 8.0) -> dict:
     root = Path(root).resolve()
     started = time.time()
     work = tempfile.mkdtemp(prefix="test-agent-")
     try:
-        server = create_sdk_mcp_server("taskly", "1.0.0", [build_run_tests_tool(root, Path(work))])
-        options = ClaudeAgentOptions(
-            cwd=str(root),
-            plugins=[{"type": "local", "path": str(PLUGIN_DIR)}],
-            setting_sources=[],
-            skills=[f"test-agent:{name}" for name in SKILLS],
-            tools=["Read", "Glob", "Grep", "Write", "Edit", "Skill"],
-            allowed_tools=["Read", "Glob", "Grep", "Skill", "Write", "Edit", "mcp__taskly__run_tests"],
-            mcp_servers={"taskly": server},
-            hooks={"PreToolUse": [HookMatcher(matcher="Write|Edit", hooks=[write_hook(root)]),
-                                  HookMatcher(matcher="Read|Glob|Grep", hooks=[read_hook(root)])]},
-            output_format={"type": "json_schema", "schema": schema.SCHEMA},
-            model=model, effort=effort, max_turns=max_turns, max_budget_usd=max_budget_usd,
-            env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "DISABLE_TELEMETRY": "1"},
-        )
+        options = build_options(root, Path(work), model=model, effort=effort, max_turns=max_turns,
+                                max_budget_usd=max_budget_usd)
         init, calls, final = {}, [], None
         try:
             async for message in query(prompt=task, options=options):
                 if isinstance(message, SystemMessage) and message.subtype == "init":
                     init = {key: message.data.get(key) for key in ("tools", "skills", "agents", "plugins", "model")}
                     init = {k: v or [] if k != "model" else v for k, v in init.items()}
+                    if audit_init(init):  # a session that is not the one we configured never gets to act
+                        return _failure("agent_error", "unexpected session", init, calls, started)
                 elif isinstance(message, AssistantMessage):
                     calls += [(b.name, b.input) for b in message.content if isinstance(b, ToolUseBlock)]
                 elif isinstance(message, ResultMessage):
