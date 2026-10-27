@@ -103,7 +103,7 @@ titled "refactor, no behaviour change" but changes behaviour; the bot reports th
 a suspected bug, and proposes no test that would hide it. [#18](https://github.com/FilipRokita/pr-test-agent/pull/18)
 changes behaviour on purpose; the bot updates the outdated test, in the stacked
 [pull request #38](https://github.com/FilipRokita/pr-test-agent/pull/38). [#20](https://github.com/FilipRokita/pr-test-agent/pull/20)
-only changes the README; the bot does not run.
+only changes the README; the bot posts a "Skipped" comment and never calls the model.
 
 ## Evaluation
 
