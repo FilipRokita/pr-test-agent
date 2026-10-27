@@ -119,7 +119,8 @@ async def run_agent(root: Path, task: str, *, model: str, effort: str = "high", 
                     max_budget_usd: float = 8.0) -> dict:
     root = Path(root).resolve()
     started = time.time()
-    with tempfile.TemporaryDirectory(prefix="test-agent-") as work:
+    work = tempfile.mkdtemp(prefix="test-agent-")
+    try:
         server = create_sdk_mcp_server("taskly", "1.0.0", [build_run_tests_tool(root, Path(work))])
         options = ClaudeAgentOptions(
             cwd=str(root),
@@ -148,6 +149,8 @@ async def run_agent(root: Path, task: str, *, model: str, effort: str = "high", 
         except Exception as error:  # the SDK raises after yielding an error result
             if final is None:
                 return _failure("agent_error", f"{type(error).__name__}: {error}", init, calls, started)
+    finally:
+        sandbox.remove_tree(work)
 
     if final is None:
         return _failure("agent_error", "the agent produced no result", init, calls, started)

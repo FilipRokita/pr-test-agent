@@ -147,3 +147,11 @@ def test_background_processes_do_not_outlive_the_call(workspace):
     import time
     time.sleep(3)
     assert not marker.exists()
+
+
+@needs_sandbox
+def test_a_tree_the_sandbox_wrote_into_can_be_removed_by_the_runner(workspace):
+    ws, out = workspace
+    _run(ws, out, f"mkdir -p {out}/tmp/deep && echo x > {out}/tmp/deep/file && chmod 500 {out}/tmp/deep")
+    sandbox.remove_tree(out)
+    assert not out.exists()
