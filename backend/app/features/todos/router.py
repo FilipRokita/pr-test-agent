@@ -19,6 +19,11 @@ def create_todo(payload: TodoCreate, repo: Repository):
     return repo.create(payload)
 
 
+@router.delete("/completed")
+def delete_completed_todos(repo: Repository):
+    return {"deleted": repo.delete_completed()}
+
+
 @router.get("/{todo_id}", response_model=Todo)
 def get_todo(todo_id: TodoId, repo: Repository):
     todo = repo.get(todo_id)
