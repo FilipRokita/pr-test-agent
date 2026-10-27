@@ -91,7 +91,8 @@ def test_repository_files_are_readable(root, path):
 
 @pytest.mark.parametrize(
     "path",
-    [".env", ".env.local", ".env.production", ".git/config", ".git/hooks/pre-commit", "backend/.env"],
+    [".env", ".env.local", ".env.production", ".git/config", ".git/hooks/pre-commit", "backend/.env",
+     ".github/test-agent/evals/scenarios/E1/scenario.json"],
 )
 def test_secrets_and_git_internals_are_not_readable(root, path):
     assert not policy.can_read(root, root / path)

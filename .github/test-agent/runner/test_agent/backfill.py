@@ -74,10 +74,10 @@ def make_context(stack: str, gaps: list[dict], head: str) -> dict:
 
 
 @contextmanager
-def worktree(root: Path | str, where: Path | str):
-    """A separate checkout of HEAD with the installed dependencies linked in, removed afterwards."""
+def worktree(root: Path | str, where: Path | str, ref: str = "HEAD"):
+    """A separate checkout of `ref` with the installed dependencies linked in, removed afterwards."""
     root, where = Path(root), Path(where)
-    git.run(root, "worktree", "add", "--detach", str(where), "HEAD")
+    git.run(root, "worktree", "add", "--detach", str(where), ref)
     try:
         for relative in ("frontend/node_modules", "backend/.venv"):
             source = root / relative

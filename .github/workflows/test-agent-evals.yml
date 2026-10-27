@@ -1,0 +1,72 @@
+name: test-agent-evals
+
+# Runs the evaluation scenarios against the agent. Manual only: it spends model credit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: Comma separated scenario ids (default all)
+        default: ""
+      repeat:
+        description: Runs per scenario
+        default: "3"
+
+permissions: {}
+
+env:
+  AGENT_RUNNER: .github/test-agent/runner
+
+jobs:
+  scenarios:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: test-agent
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [E1, E2, E3, E4, E5, E6, E7]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Install dependencies (no secrets in this step)
+        run: |
+          python -m venv backend/.venv
+          backend/.venv/bin/pip install --quiet -r backend/requirements.txt pytest-randomly
+          (cd frontend && npm ci --ignore-scripts --no-audit --no-fund)
+          python -m venv "$AGENT_RUNNER/.venv"
+          "$AGENT_RUNNER/.venv/bin/pip" install --quiet -r "$AGENT_RUNNER/requirements.txt"
+      - name: Install gitleaks
+        run: bash "$AGENT_RUNNER/scripts/install_gitleaks.sh"
+      - name: Prepare the sandbox
+        run: bash "$AGENT_RUNNER/scripts/prepare_sandbox.sh"
+      - name: Run the scenario
+        if: ${{ inputs.scenarios == '' || contains(format(',{0},', inputs.scenarios), format(',{0},', matrix.scenario)) }}
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TEST_AGENT_MODEL: ${{ vars.TEST_AGENT_MODEL }}
+          SCENARIO: ${{ matrix.scenario }}
+          REPEAT: ${{ inputs.repeat }}
+        run: |
+          for name in ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN; do
+            if [ -z "${!name}" ]; then unset "$name"; fi
+          done
+          PYTHONPATH="$AGENT_RUNNER" "$AGENT_RUNNER/.venv/bin/python" -m test_agent eval \
+            --scenario "$SCENARIO" --repeat "$REPEAT" --artifacts eval-artifacts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: eval-${{ matrix.scenario }}
+          path: eval-artifacts
+          if-no-files-found: ignore

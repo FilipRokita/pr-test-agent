@@ -7,6 +7,7 @@ verify   apply the patch and run the tests in the sandbox (no credential)
 restore  put the previous proposal back in the working tree (read-only token)
 publish  push the proposal, open or update the stacked pull request, write the comment (the only write token)
 backfill add missing tests to the existing code of one stack (a local run of the same agent and checks)
+eval     run the evaluation scenarios against the agent (each several times) and print a results table
 cleanup  a pull request was closed: close its stacked pull request and delete the test branch
 """
 
@@ -18,7 +19,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from . import agent, backfill, context, git, github, patch, publish, report, restore, sandbox, schema, tools, verify
+from . import agent, backfill, context, evals, git, github, patch, publish, report, restore, sandbox, schema, tools, verify
 
 
 def _read(path: Path):
@@ -45,12 +46,7 @@ def _event() -> dict:
 def cmd_context(args) -> int:
     pull = _event()["pull_request"]
     base, head = pull["base"]["sha"], pull["head"]["sha"]
-    changes = context.parse_name_status(
-        git.run(args.root, "diff", "--name-status", "--find-renames", f"{base}...{head}"))
-    sources = [p for s, p in changes if s != "D" and context.classify(p)["kind"] == "source"]
-    diff = git.run(args.root, "diff", "--no-ext-diff", "--no-textconv", f"{base}...{head}", "--", *sources) if sources else ""
-    ctx = context.build_context(changes=changes, title=pull.get("title") or "", body=pull.get("body") or "",
-                                base=base, head=head, diff=diff)
+    ctx = context.from_git(args.root, base=base, head=head, title=pull.get("title") or "", body=pull.get("body") or "")
     ctx["pull_request"] = pull["number"]
     ctx["head_ref"] = pull["head"]["ref"]
     repository = os.environ.get("GITHUB_REPOSITORY")
@@ -185,8 +181,45 @@ def cmd_backfill(args) -> int:
     return 0 if verification["status"] == "verified" else 1
 
 
+def cmd_eval(args) -> int:
+    directory = Path(__file__).resolve().parents[2] / "evals" / "scenarios"
+    wanted = [w for w in (args.scenario or "").split(",") if w]
+    folders = sorted(p for p in directory.iterdir() if p.is_dir() and (not wanted or any(p.name.startswith(w) for w in wanted)))
+    model = args.model or os.environ.get("TEST_AGENT_MODEL") or "claude-opus-5-5"
+    rows = []
+    for folder in folders:
+        scenario = evals.load(folder)
+        results, cost, turns = [], 0.0, 0
+        for attempt in range(1, args.repeat + 1):
+            work = Path(tempfile.mkdtemp(prefix=f"eval-{scenario['id']}-"))
+            sandbox.make_traversable(work)
+            try:
+                outcome = evals.execute(args.root, scenario, work=work, model=model, max_turns=args.max_turns, budget=args.budget)
+            except Exception as error:  # an infrastructure failure is a failed attempt, not a crash of the whole run
+                outcome, failures = None, [f"the run crashed: {type(error).__name__}: {str(error)[:200]}"]
+            else:
+                failures = evals.check(scenario["expect"], outcome)
+                result = outcome.get("agent") or {}
+                cost += result.get("cost_usd") or 0.0
+                turns += result.get("turns") or 0
+            finally:
+                sandbox.remove_tree(work)
+            results.append(failures)
+            print(f"{scenario['id']} attempt {attempt}: {'passed' if not failures else 'FAILED: ' + '; '.join(failures)}", flush=True)
+        rows.append({"name": scenario["name"], "results": results, "cost": cost, "turns": round(turns / max(len(results), 1))})
+    table = evals.summary(rows)
+    _write(args.artifacts / "eval-results.json", rows)
+    _write(args.artifacts / "eval-summary.md", table)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a") as handle:
+            handle.write("## Test agent evaluation\n\n" + table)
+    print(table)
+    return 0 if all(not failures for row in rows for failures in row["results"]) else 1
+
+
 COMMANDS = {"context": cmd_context, "restore": cmd_restore, "generate": cmd_generate, "patch": cmd_patch,
-            "verify": cmd_verify, "publish": cmd_publish, "cleanup": cmd_cleanup, "backfill": cmd_backfill}
+            "verify": cmd_verify, "publish": cmd_publish, "cleanup": cmd_cleanup, "backfill": cmd_backfill, "eval": cmd_eval}
 
 
 def main(argv=None) -> int:
@@ -196,6 +229,8 @@ def main(argv=None) -> int:
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository checkout")
     parser.add_argument("--artifacts", type=Path, default=Path("test-agent-artifacts"),
                         help="directory for the files passed between jobs")
+    parser.add_argument("--scenario", help="eval: comma separated scenario ids or name prefixes (default all)")
+    parser.add_argument("--repeat", type=int, default=3, help="eval: how many times each scenario runs")
     parser.add_argument("--stack", choices=["backend", "frontend"], help="backfill: the stack to work on")
     parser.add_argument("--files", help="backfill: comma separated repository paths to limit the work to")
     parser.add_argument("--model", help="backfill: model id (default TEST_AGENT_MODEL or claude-opus-5-5)")

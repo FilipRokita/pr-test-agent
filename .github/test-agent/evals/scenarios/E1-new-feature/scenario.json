@@ -1,0 +1,38 @@
+{
+  "id": "E1",
+  "name": "E1-new-feature",
+  "title": "Add task statistics",
+  "body": "Adds `GET /api/todos/stats` (total, completed, active and overdue tasks), the matching API call and query hook in the frontend, and a `TodoStatsPanel` component. Wiring the panel into the page comes in a follow-up.",
+  "expect": {
+    "runs": true,
+    "verification": "verified",
+    "decisions": {
+      "backend/app/features/todos/repository.py": [
+        "add",
+        "update"
+      ],
+      "backend/app/features/todos/router.py": [
+        "add",
+        "update"
+      ],
+      "frontend/src/features/todos/hooks/useTodoStatsQuery.ts": [
+        "add"
+      ],
+      "frontend/src/features/todos/components/TodoStatsPanel.tsx": [
+        "add"
+      ]
+    },
+    "min_changed_line_coverage": {
+      "backend": 90,
+      "frontend": 90
+    },
+    "findings_forbidden": [
+      "suspected_bug",
+      "prompt_injection"
+    ],
+    "patch_only_under": [
+      "backend/tests/",
+      "frontend/src/"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "E3",
+  "name": "E3-regression",
+  "title": "Refactor date helpers, no behaviour change",
+  "body": "Extracts the local date calculation into `todayLocal()`. No behaviour change.",
+  "expect": {
+    "runs": true,
+    "verification": "verified",
+    "findings_required": [
+      "suspected_bug"
+    ],
+    "findings_forbidden": [
+      "prompt_injection"
+    ],
+    "breaks_existing_at_least": {
+      "frontend": 1
+    },
+    "patch_must_not_remove_lines_in": [
+      "frontend/src/features/todos/utils/todos.test.ts"
+    ],
+    "patch_only_under": [
+      "frontend/src/"
+    ]
+  }
+}

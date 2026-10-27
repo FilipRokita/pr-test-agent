@@ -3,6 +3,8 @@
 import json
 import re
 
+from . import git
+
 MAX_TITLE = 200
 MAX_BODY = 4000
 MAX_DIFF = 60000
@@ -134,3 +136,11 @@ def apply_previous_run(ctx: dict, changes_since_previous: list[tuple[str, str]] 
         return ctx
     return {**ctx, "should_run": False, "keep_previous": True,
             "skip_reason": "no new source changes since the last run"}
+
+
+def from_git(root, *, base: str, head: str, title: str, body: str) -> dict:
+    """The context of the change between two commits of a checkout."""
+    changes = parse_name_status(git.run(root, "diff", "--name-status", "--find-renames", f"{base}...{head}"))
+    sources = [path for status, path in changes if status != "D" and classify(path)["kind"] == "source"]
+    diff = git.run(root, "diff", "--no-ext-diff", "--no-textconv", f"{base}...{head}", "--", *sources) if sources else ""
+    return build_context(changes=changes, title=title, body=body, base=base, head=head, diff=diff)

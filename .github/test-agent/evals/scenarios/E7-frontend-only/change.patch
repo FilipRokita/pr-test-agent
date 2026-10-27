@@ -1,0 +1,42 @@
+diff --git a/frontend/src/features/todos/components/TodoCounts.tsx b/frontend/src/features/todos/components/TodoCounts.tsx
+new file mode 100644
+index 0000000..ee9cef7
+--- /dev/null
++++ b/frontend/src/features/todos/components/TodoCounts.tsx
+@@ -0,0 +1,17 @@
++import { Badge, Text } from '../../../design-system'
++import { useTodoCounts } from '../hooks/useTodoCounts'
++import type { Todo } from '../types'
++
++export function TodoCounts({ todos }: { todos: Todo[] }) {
++  const { total, active, completed } = useTodoCounts(todos)
++  if (total === 0) return null
++  return (
++    <div className="row compact" aria-label="Task counts">
++      <Text as="span" muted size="small">
++        {total} {total === 1 ? 'task' : 'tasks'}
++      </Text>
++      <Badge variant="info">{active} to do</Badge>
++      <Badge variant="success">{completed} completed</Badge>
++    </div>
++  )
++}
+diff --git a/frontend/src/features/todos/hooks/useTodoCounts.ts b/frontend/src/features/todos/hooks/useTodoCounts.ts
+new file mode 100644
+index 0000000..a851de5
+--- /dev/null
++++ b/frontend/src/features/todos/hooks/useTodoCounts.ts
+@@ -0,0 +1,13 @@
++import { useMemo } from 'react'
++import type { Todo } from '../types'
++
++export function useTodoCounts(todos: Todo[]) {
++  return useMemo(() => {
++    const completed = todos.filter((todo) => todo.completed).length
++    return {
++      total: todos.length,
++      completed,
++      active: todos.length - completed,
++    }
++  }, [todos])
++}

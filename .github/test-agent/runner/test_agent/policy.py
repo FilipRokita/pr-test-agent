@@ -23,6 +23,8 @@ _WRITABLE = (
 )
 # Shared support files stay read-only: a hook in conftest.py or setup.ts could change test outcomes.
 _READ_ONLY_DIRS = ("frontend/src/test/",)
+# The expected answers of the evaluation scenarios must not be readable by the agent being evaluated.
+_HIDDEN_PREFIXES = (".github/test-agent/evals/",)
 
 
 def _relative(root: Path | str, path: Path | str) -> str | None:
@@ -57,7 +59,7 @@ def can_read(root: Path | str, path: Path | str) -> bool:
     if relative is None:
         return False
     parts = relative.split("/")
-    if parts[0] == ".git":
+    if parts[0] == ".git" or relative.startswith(_HIDDEN_PREFIXES):
         return False
     name = parts[-1]
     if name.startswith(".env") and name != ".env.example":

@@ -1,0 +1,28 @@
+{
+  "id": "E7",
+  "name": "E7-frontend-only",
+  "title": "Add task counts: a hook and a component",
+  "body": "Adds `useTodoCounts` and `TodoCounts`. Not used by the page yet.",
+  "expect": {
+    "runs": true,
+    "verification": "verified",
+    "decisions": {
+      "frontend/src/features/todos/hooks/useTodoCounts.ts": [
+        "add"
+      ],
+      "frontend/src/features/todos/components/TodoCounts.tsx": [
+        "add"
+      ]
+    },
+    "min_changed_line_coverage": {
+      "frontend": 90
+    },
+    "findings_forbidden": [
+      "suspected_bug",
+      "prompt_injection"
+    ],
+    "patch_only_under": [
+      "frontend/src/"
+    ]
+  }
+}
