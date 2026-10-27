@@ -2,7 +2,7 @@
   "id": "E1",
   "name": "E1-new-feature",
   "title": "Add task statistics",
-  "body": "Adds `GET /api/todos/stats` (total, completed, active and overdue tasks), the matching API call and query hook in the frontend, and a `TodoStatsPanel` component. Wiring the panel into the page comes in a follow-up.",
+  "body": "Adds `GET /api/todos/stats` (total, completed, active and overdue tasks), the matching API call and query hook in the frontend, a `TodoStatsPanel` component, and refreshes the statistics after a task is created, updated or deleted. Wiring the panel into the page comes in a follow-up.",
   "expect": {
     "runs": true,
     "verification": "verified",
@@ -20,6 +20,18 @@
       ],
       "frontend/src/features/todos/components/TodoStatsPanel.tsx": [
         "add"
+      ],
+      "frontend/src/features/todos/hooks/useCreateTodoMutation.ts": [
+        "add",
+        "update"
+      ],
+      "frontend/src/features/todos/hooks/useUpdateTodoMutation.ts": [
+        "add",
+        "update"
+      ],
+      "frontend/src/features/todos/hooks/useDeleteTodoMutation.ts": [
+        "add",
+        "update"
       ]
     },
     "min_changed_line_coverage": {

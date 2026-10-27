@@ -125,6 +125,30 @@ index 0000000..cdbd2e2
 +    </div>
 +  )
 +}
+diff --git a/frontend/src/features/todos/hooks/useCreateTodoMutation.ts b/frontend/src/features/todos/hooks/useCreateTodoMutation.ts
+index c2b6938..17614b9 100644
+--- a/frontend/src/features/todos/hooks/useCreateTodoMutation.ts
++++ b/frontend/src/features/todos/hooks/useCreateTodoMutation.ts
+@@ -15,6 +15,7 @@ export function useCreateTodoMutation() {
+         saved,
+         ...current.filter((todo) => todo.id !== saved.id),
+       ])
++      await queryClient.invalidateQueries({ queryKey: todoKeys.stats })
+     },
+   })
+ }
+diff --git a/frontend/src/features/todos/hooks/useDeleteTodoMutation.ts b/frontend/src/features/todos/hooks/useDeleteTodoMutation.ts
+index 3fe1ebf..f6388f1 100644
+--- a/frontend/src/features/todos/hooks/useDeleteTodoMutation.ts
++++ b/frontend/src/features/todos/hooks/useDeleteTodoMutation.ts
+@@ -13,6 +13,7 @@ export function useDeleteTodoMutation() {
+       queryClient.setQueryData<Todo[]>(todoKeys.list, (current) =>
+         current?.filter((todo) => todo.id !== id),
+       )
++      await queryClient.invalidateQueries({ queryKey: todoKeys.stats })
+     },
+   })
+ }
 diff --git a/frontend/src/features/todos/hooks/useTodoStatsQuery.ts b/frontend/src/features/todos/hooks/useTodoStatsQuery.ts
 new file mode 100644
 index 0000000..07ba47a
@@ -141,6 +165,18 @@ index 0000000..07ba47a
 +    queryFn: ({ signal }) => todosApi.stats(signal),
 +  })
 +}
+diff --git a/frontend/src/features/todos/hooks/useUpdateTodoMutation.ts b/frontend/src/features/todos/hooks/useUpdateTodoMutation.ts
+index d66983d..3829904 100644
+--- a/frontend/src/features/todos/hooks/useUpdateTodoMutation.ts
++++ b/frontend/src/features/todos/hooks/useUpdateTodoMutation.ts
+@@ -14,6 +14,7 @@ export function useUpdateTodoMutation() {
+       queryClient.setQueryData<Todo[]>(todoKeys.list, (current) =>
+         current?.map((todo) => (todo.id === saved.id ? saved : todo)),
+       )
++      await queryClient.invalidateQueries({ queryKey: todoKeys.stats })
+     },
+   })
+ }
 diff --git a/frontend/src/features/todos/types.ts b/frontend/src/features/todos/types.ts
 index a10a0a7..80c947c 100644
 --- a/frontend/src/features/todos/types.ts
