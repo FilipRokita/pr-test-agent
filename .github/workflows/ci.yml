@@ -52,7 +52,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm run format:check
-      - run: npm run test:coverage
+      - run: npm run test:coverage -- --coverage.thresholds.lines=95 --coverage.thresholds.statements=95 --coverage.thresholds.branches=80
 
   test-agent-runner:
     runs-on: ubuntu-24.04
