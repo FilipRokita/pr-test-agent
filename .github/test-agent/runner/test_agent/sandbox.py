@@ -54,6 +54,11 @@ def make_traversable(path: Path | str) -> None:
         subprocess.run(_privileged(cmd), check=True, capture_output=True)
 
 
+def remove_tree(path: Path | str) -> None:
+    """Delete a tree that sandboxed code wrote into; its files belong to the sandbox user."""
+    subprocess.run(_privileged(["rm", "-rf", str(path)]), check=False, capture_output=True)
+
+
 def prepare_out_dir(out_dir: Path | str) -> Path:
     """Create an empty output directory owned by the sandbox user."""
     out = Path(out_dir)
