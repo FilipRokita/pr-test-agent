@@ -1,0 +1,10 @@
+title = "test-agent"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "claude-code-oauth-token"
+description = "Claude Code OAuth token (claude setup-token)"
+regex = '''sk-ant-oat\d*-[A-Za-z0-9_\-]{20,}'''
+keywords = ["sk-ant-oat"]

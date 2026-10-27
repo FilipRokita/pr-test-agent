@@ -37,6 +37,57 @@ def _counts(stack: dict) -> str:
     return ", ".join(parts)
 
 
+def _runs(stack: dict) -> str:
+    if stack.get("error"):
+        return f"error: {_text(stack['error'], 120)}"
+    runs = stack.get("runs") or []
+    if runs and all(r == runs[0] for r in runs):
+        return _counts({"counts": runs[0]}) + " in each run"
+    return _counts(stack)
+
+
+def _coverage(stack: dict) -> str:
+    cov = stack.get("coverage")
+    if cov is None:
+        return "not available"
+    if cov.get("percent") is None:
+        return "no executable lines changed"
+    return f"{cov['percent']}% ({cov['covered']}/{cov['total']})"
+
+
+def _revert(stack: dict) -> str:
+    revert = stack.get("revert") or {}
+    if not revert.get("checked"):
+        return "not checked: " + _text(revert.get("reason", "no information"), 120)
+    return f"{revert['detect']} of {revert['total']}"
+
+
+def _ids(items) -> str:
+    return ", ".join(f"`{re.sub(r'[`|<>@#\s]', '', i)[:120]}`" for i in items[:10]) + (" and more" if len(items) > 10 else "")
+
+
+def _problems(verification: dict) -> list[str]:
+    lines = []
+    for name, stack in verification["stacks"].items():
+        label = _text(name, 20)
+        if stack.get("breaks_existing"):
+            lines += [f"**This pull request breaks {len(stack['breaks_existing'])} existing {label} tests** "
+                      f"(they already fail without the proposed tests): {_ids(stack['breaks_existing'])}", ""]
+        for key, text in (("failing", "Proposed tests that failed"), ("flaky", "Tests that changed outcome between runs"),
+                          ("broken_by_patch", "Existing tests broken by the proposal")):
+            if stack.get(key):
+                lines += [f"**{text} ({label}):** {_ids(stack[key])}", ""]
+        if stack.get("ids_changed"):
+            lines += [f"**The set of existing {label} tests changed**, which a proposal must not do.", ""]
+        weak = (stack.get("revert") or {}).get("weak") or []
+        if weak:
+            lines += [f"**Weak tests ({label}):** these pass even with the old source, so they do not detect "
+                      f"the change: {_ids(weak)}", ""]
+    for warning in verification.get("warnings") or []:
+        lines += [f"Note: {_text(warning, 200)}", ""]
+    return lines
+
+
 def _headline(ctx, agent, verification) -> str:
     if not ctx.get("should_run"):
         return f"Skipped: {_text(ctx.get('skip_reason'), 200)}"
@@ -54,8 +105,11 @@ def _headline(ctx, agent, verification) -> str:
         if not verification.get("patch_files"):
             return "No new tests needed"
         return f"{added} added, {updated} updated, all verified"
+    if verification.get("status") == "error":
+        return "Verification could not run: " + _text(verification.get("reason"), 200)
     if verification.get("status") == "rejected":
-        return "Proposed tests were rejected by the checks"
+        reason = _text(verification.get("reason"), 300)
+        return "Proposed tests were rejected by the checks" + (f": {reason}" if reason else "")
     return "Proposed tests did not pass verification"
 
 
@@ -67,12 +121,14 @@ def render(ctx: dict, agent: dict | None, verification: dict | None, run_url: st
         lines += [_text(output["summary"], 600), ""]
 
     if verification and verification.get("stacks"):
-        lines += ["| Stack | Tests after the proposal |", "|---|---|"]
+        lines += ["| Stack | Tests (3 shuffled runs) | Changed-line coverage | New tests that detect the change |",
+                  "|---|---|---|---|"]
         for name, stack in verification["stacks"].items():
-            lines.append(f"| {_text(name, 20)} | {_counts(stack)} |")
+            lines.append(f"| {_text(name, 20)} | {_runs(stack)} | {_coverage(stack)} | {_revert(stack)} |")
         lines.append("")
         if verification.get("patch_files"):
             lines += ["Files in the proposal: " + ", ".join(_path(p) for p in verification["patch_files"]), ""]
+        lines += _problems(verification)
 
     findings = output.get("findings") or []
     if findings:

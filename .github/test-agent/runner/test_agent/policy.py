@@ -38,13 +38,18 @@ def _relative(root: Path | str, path: Path | str) -> str | None:
         return None
 
 
-def can_write(root: Path | str, path: Path | str) -> bool:
-    relative = _relative(root, path)
-    if relative is None:
+def is_writable_relative(relative: str) -> bool:
+    """Whether a repository-relative POSIX path is one the agent may create or edit."""
+    if ".." in relative.split("/") or relative.startswith("/"):
         return False
     if any(relative.startswith(prefix) for prefix in _READ_ONLY_DIRS):
         return False
     return any(pattern.match(relative) for pattern in _WRITABLE)
+
+
+def can_write(root: Path | str, path: Path | str) -> bool:
+    relative = _relative(root, path)
+    return relative is not None and is_writable_relative(relative)
 
 
 def can_read(root: Path | str, path: Path | str) -> bool:
