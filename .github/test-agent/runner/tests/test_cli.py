@@ -31,7 +31,7 @@ def pr(tmp_path, monkeypatch):
     event = tmp_path / "event.json"
     event.write_text(json.dumps({"pull_request": {
         "number": 9, "title": "Change f", "body": "returns 2 now",
-        "base": {"sha": base}, "head": {"sha": head}}}))
+        "base": {"sha": base}, "head": {"sha": head, "ref": "feature"}}}))
     output = tmp_path / "output.txt"
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(event))
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
@@ -63,7 +63,7 @@ def test_a_docs_only_change_does_not_start_the_agent(pr):
     _git(repo, "commit", "-qam", "docs")
     event = json.loads(open(__import__("os").environ["GITHUB_EVENT_PATH"]).read())
     base = _git(repo, "rev-parse", "HEAD~1")
-    event["pull_request"].update(head={"sha": _git(repo, "rev-parse", "HEAD")}, base={"sha": base})
+    event["pull_request"].update(head={"sha": _git(repo, "rev-parse", "HEAD"), "ref": "feature"}, base={"sha": base})
     open(__import__("os").environ["GITHUB_EVENT_PATH"], "w").write(json.dumps(event))
     main(["context", "--root", str(repo), "--artifacts", str(artifacts)])
     assert "should_run=false" in output.read_text()

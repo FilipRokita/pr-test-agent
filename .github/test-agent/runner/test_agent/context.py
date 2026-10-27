@@ -124,3 +124,13 @@ def render_task(ctx: dict) -> str:
         f"{_defang(ctx['diff'])}\n"
         "</diff>\n"
     )
+
+
+def apply_previous_run(ctx: dict, changes_since_previous: list[tuple[str, str]] | None) -> dict:
+    """A push that only touches tests or other files (for example merging the proposal) needs no new run."""
+    if changes_since_previous is None or not ctx["should_run"]:
+        return ctx
+    if any(classify(path)["kind"] == "source" and status != "D" for status, path in changes_since_previous):
+        return ctx
+    return {**ctx, "should_run": False, "keep_previous": True,
+            "skip_reason": "no new source changes since the last run"}

@@ -136,3 +136,30 @@ def test_parse_name_status_handles_renames_and_spaces():
         ("R", "backend/app/new.py"),
         ("A", "frontend/src/b.ts"),
     ]
+
+
+def _run_ctx(changes):
+    return context.build_context(changes=changes, title="t", body="b", base="a" * 40, head="b" * 40, diff="")
+
+
+def test_a_push_without_new_source_changes_keeps_the_previous_result():
+    ctx = _run_ctx([("M", "backend/app/x.py")])
+    result = context.apply_previous_run(ctx, [("A", "backend/tests/test_new.py"), ("M", "README.md")])
+    assert result["should_run"] is False and result["keep_previous"] is True
+    assert "no new source changes" in result["skip_reason"]
+
+
+def test_a_push_with_new_source_changes_runs_again():
+    ctx = _run_ctx([("M", "backend/app/x.py")])
+    result = context.apply_previous_run(ctx, [("M", "backend/app/x.py")])
+    assert result["should_run"] is True and not result.get("keep_previous")
+
+
+def test_without_a_previous_run_nothing_changes():
+    ctx = _run_ctx([("M", "backend/app/x.py")])
+    assert context.apply_previous_run(ctx, None) == ctx
+
+
+def test_a_skipped_context_is_left_alone():
+    ctx = _run_ctx([("M", "README.md")])
+    assert context.apply_previous_run(ctx, [("M", "README.md")]) == ctx

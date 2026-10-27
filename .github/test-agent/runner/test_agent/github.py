@@ -25,3 +25,10 @@ def upsert_comment(repo: str, pr: int, body: str, run=_gh) -> None:
         run(["api", "--method", "PATCH", f"repos/{repo}/issues/comments/{existing['id']}", "--input", "-"], payload)
     else:
         run(["api", "--method", "POST", f"repos/{repo}/issues/{pr}/comments", "--input", "-"], payload)
+
+
+def bot_comment_body(repo: str, pr: int, run=_gh) -> str | None:
+    pages = json.loads(run(["api", "--paginate", "--slurp", f"repos/{repo}/issues/{pr}/comments"]) or "[]")
+    listing = [comment for page in pages for comment in page]
+    existing = next((c for c in listing if c["user"]["login"] == BOT and report.MARKER in c["body"]), None)
+    return existing["body"] if existing else None
