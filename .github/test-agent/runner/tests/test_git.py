@@ -62,3 +62,10 @@ def test_plain_git_would_have_run_the_trap(repo, tmp_path_factory):
 def test_a_failing_command_raises_with_the_message(repo):
     with pytest.raises(git.GitError, match="rev-parse --verify .* failed"):
         git.run(repo, "rev-parse", "--verify", "does-not-exist^{commit}")
+
+
+def test_extra_environment_and_config_reach_git_and_its_helpers(repo):
+    """A credential helper reads its token from the environment git runs in."""
+    out = git.run(repo, "showenv", config=(("alias.showenv", "!sh -c 'echo $MY_TOKEN'"),), extra_env={"MY_TOKEN": "visible"})
+    assert out.strip() == "visible"
+    assert git.run(repo, "showenv", config=(("alias.showenv", "!sh -c 'echo ${MY_TOKEN:-absent}'"),)).strip() == "absent"
