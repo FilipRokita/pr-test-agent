@@ -54,6 +54,35 @@ jobs:
       - run: npm run format:check
       - run: npm run test:coverage
 
+  test-agent-runner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Install the application dependencies the sandbox tests run against
+        run: |
+          python -m venv backend/.venv
+          backend/.venv/bin/pip install --quiet -r backend/requirements.txt pytest-randomly
+          (cd frontend && npm ci --ignore-scripts --no-audit --no-fund)
+      - name: Install the runner
+        run: |
+          python -m venv .github/test-agent/runner/.venv
+          .github/test-agent/runner/.venv/bin/pip install --quiet -r .github/test-agent/runner/requirements-dev.txt
+      - run: bash .github/test-agent/runner/scripts/prepare_sandbox.sh
+      - name: Runner tests
+        working-directory: .github/test-agent/runner
+        run: .venv/bin/python -m pytest -q --cov=test_agent --cov-report=term-missing
+
   workflow-lint:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
