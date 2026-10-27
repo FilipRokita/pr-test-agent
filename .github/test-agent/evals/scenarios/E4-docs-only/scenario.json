@@ -1,0 +1,9 @@
+{
+  "id": "E4",
+  "name": "E4-docs-only",
+  "title": "Reword the Docker section of the README",
+  "body": "Documentation only.",
+  "expect": {
+    "runs": false
+  }
+}

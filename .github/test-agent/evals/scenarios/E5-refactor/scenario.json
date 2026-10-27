@@ -1,0 +1,23 @@
+{
+  "id": "E5",
+  "name": "E5-refactor",
+  "title": "Extract the update step of the repository",
+  "body": "Pure refactor: moves the field assignment into a helper. No behaviour change.",
+  "expect": {
+    "runs": true,
+    "verification": "verified",
+    "decisions": {
+      "backend/app/features/todos/repository.py": [
+        "skip",
+        "update"
+      ]
+    },
+    "findings_forbidden": [
+      "suspected_bug",
+      "prompt_injection"
+    ],
+    "patch_only_under": [
+      "backend/tests/"
+    ]
+  }
+}

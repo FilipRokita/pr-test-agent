@@ -1,0 +1,159 @@
+diff --git a/backend/app/features/todos/repository.py b/backend/app/features/todos/repository.py
+index fd687bf..2e45949 100644
+--- a/backend/app/features/todos/repository.py
++++ b/backend/app/features/todos/repository.py
+@@ -1,11 +1,11 @@
+-from datetime import datetime, timezone
++from datetime import date, datetime, timezone
+ 
+ from sqlalchemy import select
+ from sqlalchemy.orm import Session
+ 
+ from .mappers import from_model
+ from .models import TodoRecord
+-from .schemas import Todo, TodoCreate, TodoUpdate
++from .schemas import Todo, TodoCreate, TodoStats, TodoUpdate
+ 
+ 
+ class TodoRepository:
+@@ -46,3 +46,9 @@ class TodoRepository:
+         self.session.delete(record)
+         self.session.commit()
+         return True
++
++    def stats(self, today: date) -> TodoStats:
++        todos = self.list()
++        completed = sum(1 for todo in todos if todo.completed)
++        overdue = sum(1 for todo in todos if not todo.completed and todo.due_date is not None and todo.due_date < today)
++        return TodoStats(total=len(todos), completed=completed, active=len(todos) - completed, overdue=overdue)
+diff --git a/backend/app/features/todos/router.py b/backend/app/features/todos/router.py
+index 9a57fb4..c9da100 100644
+--- a/backend/app/features/todos/router.py
++++ b/backend/app/features/todos/router.py
+@@ -1,9 +1,10 @@
++from datetime import date
+ from typing import Annotated
+ 
+ from fastapi import APIRouter, HTTPException, Path, Response
+ 
+ from ...api.dependencies import Repository
+-from .schemas import Todo, TodoCreate, TodoUpdate
++from .schemas import Todo, TodoCreate, TodoStats, TodoUpdate
+ 
+ router = APIRouter(prefix="/api/todos", tags=["todos"])
+ TodoId = Annotated[int, Path(gt=0)]
+@@ -14,6 +15,11 @@ def list_todos(repo: Repository):
+     return repo.list()
+ 
+ 
++@router.get("/stats", response_model=TodoStats)
++def todo_stats(repo: Repository):
++    return repo.stats(date.today())
++
++
+ @router.post("", response_model=Todo, status_code=201)
+ def create_todo(payload: TodoCreate, repo: Repository):
+     return repo.create(payload)
+diff --git a/backend/app/features/todos/schemas.py b/backend/app/features/todos/schemas.py
+index 207c471..8769ba3 100644
+--- a/backend/app/features/todos/schemas.py
++++ b/backend/app/features/todos/schemas.py
+@@ -36,6 +36,13 @@ class TodoUpdate(BaseModel):
+         return validate_patch_fields(self)
+ 
+ 
++class TodoStats(BaseModel):
++    total: int
++    completed: int
++    active: int
++    overdue: int
++
++
+ class Todo(TodoCreate):
+     id: int
+     created_at: datetime
+diff --git a/frontend/src/features/todos/api/queryKeys.ts b/frontend/src/features/todos/api/queryKeys.ts
+index cf52ed2..1eaf8c4 100644
+--- a/frontend/src/features/todos/api/queryKeys.ts
++++ b/frontend/src/features/todos/api/queryKeys.ts
+@@ -1,6 +1,7 @@
+ export const todoKeys = {
+   all: ['todos'] as const,
+   list: ['todos', 'list'] as const,
++  stats: ['todos', 'stats'] as const,
+   create: ['todos', 'create'] as const,
+   update: ['todos', 'update'] as const,
+   delete: ['todos', 'delete'] as const,
+diff --git a/frontend/src/features/todos/api/todos.ts b/frontend/src/features/todos/api/todos.ts
+index 5f08591..e6b860d 100644
+--- a/frontend/src/features/todos/api/todos.ts
++++ b/frontend/src/features/todos/api/todos.ts
+@@ -1,8 +1,10 @@
+ import { request } from '../../../lib/http'
+-import type { Todo, TodoInput } from '../types'
++import type { Todo, TodoInput, TodoStats } from '../types'
+ 
+ export const todosApi = {
+   list: (signal?: AbortSignal) => request<Todo[]>('/todos', { signal }),
++  stats: (signal?: AbortSignal) =>
++    request<TodoStats>('/todos/stats', { signal }),
+   create: (input: TodoInput) => {
+     // A form initialized with a Todo must never send read-only fields.
+     const { title, description, priority, due_date, completed } = input
+diff --git a/frontend/src/features/todos/components/TodoStatsPanel.tsx b/frontend/src/features/todos/components/TodoStatsPanel.tsx
+new file mode 100644
+index 0000000..cdbd2e2
+--- /dev/null
++++ b/frontend/src/features/todos/components/TodoStatsPanel.tsx
+@@ -0,0 +1,19 @@
++import { Badge, Text } from '../../../design-system'
++import { useTodoStatsQuery } from '../hooks/useTodoStatsQuery'
++
++export function TodoStatsPanel() {
++  const stats = useTodoStatsQuery()
++  if (stats.isPending) return <Text muted>Loading statistics…</Text>
++  if (stats.isError) return <Text muted>Statistics are unavailable.</Text>
++  const { total, active, completed, overdue } = stats.data
++  return (
++    <div className="row compact" aria-label="Task statistics">
++      <Text as="span" muted size="small">
++        {total} {total === 1 ? 'task' : 'tasks'}
++      </Text>
++      <Badge variant="info">{active} to do</Badge>
++      <Badge variant="success">{completed} completed</Badge>
++      {overdue > 0 && <Badge variant="warning">{overdue} overdue</Badge>}
++    </div>
++  )
++}
+diff --git a/frontend/src/features/todos/hooks/useTodoStatsQuery.ts b/frontend/src/features/todos/hooks/useTodoStatsQuery.ts
+new file mode 100644
+index 0000000..07ba47a
+--- /dev/null
++++ b/frontend/src/features/todos/hooks/useTodoStatsQuery.ts
+@@ -0,0 +1,10 @@
++import { useQuery } from '@tanstack/react-query'
++import { todoKeys } from '../api/queryKeys'
++import { todosApi } from '../api/todos'
++
++export function useTodoStatsQuery() {
++  return useQuery({
++    queryKey: todoKeys.stats,
++    queryFn: ({ signal }) => todosApi.stats(signal),
++  })
++}
+diff --git a/frontend/src/features/todos/types.ts b/frontend/src/features/todos/types.ts
+index a10a0a7..80c947c 100644
+--- a/frontend/src/features/todos/types.ts
++++ b/frontend/src/features/todos/types.ts
+@@ -11,5 +11,11 @@ export interface Todo extends TodoInput {
+   created_at: string
+   updated_at: string
+ }
++export interface TodoStats {
++  total: number
++  completed: number
++  active: number
++  overdue: number
++}
+ export type Filter = 'all' | 'active' | 'completed'
+ export type Sort = 'newest' | 'priority' | 'due'

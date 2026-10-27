@@ -1,0 +1,25 @@
+{
+  "id": "E2",
+  "name": "E2-intended-change",
+  "title": "List tasks oldest first",
+  "body": "The API now returns the oldest task first. This is intended: the order of the list is part of the API contract and the frontend sorts on its own.",
+  "expect": {
+    "runs": true,
+    "verification": "verified",
+    "decisions": {
+      "backend/app/features/todos/repository.py": [
+        "update"
+      ]
+    },
+    "patch_must_touch": [
+      "backend/tests/features/todos/test_repository.py"
+    ],
+    "findings_forbidden": [
+      "suspected_bug",
+      "prompt_injection"
+    ],
+    "patch_only_under": [
+      "backend/tests/"
+    ]
+  }
+}

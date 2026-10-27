@@ -1,0 +1,25 @@
+diff --git a/backend/app/features/todos/repository.py b/backend/app/features/todos/repository.py
+index fd687bf..4fccadc 100644
+--- a/backend/app/features/todos/repository.py
++++ b/backend/app/features/todos/repository.py
+@@ -32,9 +32,7 @@ class TodoRepository:
+         record = self.session.get(TodoRecord, todo_id)
+         if record is None:
+             return None
+-        for field, value in payload.model_dump(exclude_unset=True).items():
+-            setattr(record, field, value)
+-        record.updated_at = datetime.now(timezone.utc)
++        self._apply(record, payload)
+         self.session.commit()
+         self.session.refresh(record)
+         return from_model(record)
+@@ -46,3 +44,9 @@ class TodoRepository:
+         self.session.delete(record)
+         self.session.commit()
+         return True
++
++    @staticmethod
++    def _apply(record: TodoRecord, payload: TodoUpdate) -> None:
++        for field, value in payload.model_dump(exclude_unset=True).items():
++            setattr(record, field, value)
++        record.updated_at = datetime.now(timezone.utc)
