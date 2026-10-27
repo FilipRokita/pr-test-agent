@@ -52,3 +52,9 @@ def test_the_body_is_sent_as_data_not_on_the_command_line():
     args, body = [c for c in gh.calls if "--paginate" not in c[0]][0]
     assert "rm -rf" not in " ".join(args)
     assert json.loads(body)["body"].endswith("`x`")
+
+
+def test_the_bot_comment_body_is_found_for_reading_the_previous_state():
+    gh = FakeGh([_comment(1, "someone", report.MARKER + " fake"), _comment(2, "github-actions[bot]", report.MARKER + "\nreal")])
+    assert github.bot_comment_body("o/r", 7, run=gh).endswith("real")
+    assert github.bot_comment_body("o/r", 7, run=FakeGh([])) is None

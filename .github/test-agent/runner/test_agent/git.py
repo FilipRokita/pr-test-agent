@@ -21,16 +21,19 @@ class GitError(RuntimeError):
     pass
 
 
-def run(cwd: Path | str, *args: str, check: bool = True, stdin: str | None = None) -> str:
+def run(cwd: Path | str, *args: str, check: bool = True, stdin: str | None = None,
+        config: tuple[tuple[str, str], ...] = (), extra_env: dict | None = None) -> str:
     env = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "HOME": os.environ.get("HOME", "/tmp"),
         "GIT_CONFIG_NOSYSTEM": "1",
         "GIT_CONFIG_GLOBAL": "/dev/null",
         "GIT_TERMINAL_PROMPT": "0",
+        **(extra_env or {}),
     }
+    options = [part for key, value in config for part in ("-c", f"{key}={value}")]
     proc = subprocess.run(
-        ["git", *_HARDENING, *args], cwd=cwd, env=env, input=stdin,
+        ["git", *_HARDENING, *options, *args], cwd=cwd, env=env, input=stdin,
         capture_output=True, text=True, check=False,
     )
     if check and proc.returncode != 0:

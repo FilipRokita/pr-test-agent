@@ -4,6 +4,7 @@ Text written by the model is untrusted: it is escaped so it cannot add markup, m
 marker or break out of a table cell.
 """
 
+import json
 import re
 
 MARKER = "<!-- taskly-test-agent -->"
@@ -113,8 +114,45 @@ def _headline(ctx, agent, verification) -> str:
     return "Proposed tests did not pass verification"
 
 
-def render(ctx: dict, agent: dict | None, verification: dict | None, run_url: str = "") -> str:
+STATE_PREFIX = "<!-- taskly-test-agent-state "
+
+
+def previous_head(comment_body: str) -> str | None:
+    """The head commit that the last completed run analysed, read back from the comment."""
+    match = re.search(r"<!-- taskly-test-agent-state (\{.*?\}) -->", comment_body)
+    if not match:
+        return None
+    try:
+        head = json.loads(match.group(1)).get("head", "")
+    except ValueError:
+        return None
+    return head if re.fullmatch(r"[0-9a-f]{40}", head or "") else None
+
+
+def render_pull_request_body(ctx: dict, agent: dict, verification: dict) -> str:
+    output = agent.get("structured_output") or {}
+    files = ", ".join(_path(p) for p in verification.get("patch_files", []))
+    return "\n".join([
+        f"Tests proposed by the test agent for #{int(ctx['pull_request'])}. They are verified: see the comment on that "
+        "pull request for the decisions, the three shuffled runs and the coverage of the changed lines.",
+        "",
+        _text(output.get("summary"), 600),
+        "",
+        f"Files: {files}",
+        "",
+        "CI on this pull request starts after one approval click, because GitHub holds runs started by the "
+        "workflow token. Merge it into the branch of the original pull request if the tests are wanted.",
+    ])
+
+
+def render(ctx: dict, agent: dict | None, verification: dict | None, run_url: str = "", stacked: int | None = None,
+           note: str = "") -> str:
     lines = [MARKER, f"## Test agent: {_headline(ctx, agent, verification)}", ""]
+    if stacked:
+        lines += [f"Tests are proposed in #{int(stacked)}, stacked on this branch. CI on that pull request starts "
+                  "after one approval click. CI on this pull request remains the merge gate.", ""]
+    if note:
+        lines += [_text(note, 300), ""]
     output = (agent or {}).get("structured_output") or {}
 
     if output.get("summary"):
@@ -158,4 +196,6 @@ def render(ctx: dict, agent: dict | None, verification: dict | None, run_url: st
         if run_url:
             details.append(f"[workflow run]({run_url})")
         lines += ["<details><summary>Run</summary>", "", *[f"- {d}" for d in details], "", "</details>"]
+    if agent and agent.get("status") == "ok" and verification is not None and re.fullmatch(r"[0-9a-f]{40}", ctx.get("head") or ""):
+        lines += ["", f'{STATE_PREFIX}{json.dumps({"head": ctx["head"]})} -->']
     return "\n".join(lines).rstrip() + "\n"

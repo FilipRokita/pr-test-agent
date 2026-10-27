@@ -1,3 +1,5 @@
+import re
+
 from test_agent import report
 
 CTX = {"base": "a" * 40, "head": "b" * 40, "should_run": True, "skip_reason": "", "stacks": ["backend"],
@@ -57,7 +59,8 @@ def test_model_text_cannot_inject_markup_mentions_or_a_second_marker():
         "warnings": []}}
     text = report.render(CTX, agent, VERIFIED)
     assert text.count(report.MARKER) == 1
-    assert "<img" not in text and "<!--" not in text.replace(report.MARKER, "")
+    without_state = re.sub(r"<!-- taskly-test-agent-state \{.*?\} -->", "", text)
+    assert "<img" not in text and "<!--" not in without_state.replace(report.MARKER, "")
     assert "@octocat" not in text and "#1 " not in text
     assert "\n# Heading" not in text and "```" not in text
 
@@ -124,3 +127,31 @@ def test_test_ids_from_the_model_cannot_inject_markup():
     stack = {**FULL["stacks"]["backend"], "failing": ["x`<script>@a|b"]}
     text = report.render(CTX, AGENT, {**FULL, "status": "failing", "stacks": {"backend": stack}})
     assert "<script>" not in text and "@a" not in text
+
+
+def test_the_state_of_a_completed_run_can_be_read_back_from_the_comment():
+    ctx = {**CTX, "head": "c" * 40}
+    text = report.render(ctx, AGENT, VERIFIED)
+    assert report.previous_head(text) == "c" * 40
+
+
+def test_an_unfinished_run_records_no_state_so_the_next_push_runs_again():
+    ctx = {**CTX, "head": "c" * 40}
+    assert report.previous_head(report.render(ctx, {**AGENT, "status": "agent_error", "structured_output": None}, None)) is None
+    assert report.previous_head(report.render(ctx, AGENT, None)) is None
+
+
+def test_a_forged_state_marker_is_not_trusted():
+    assert report.previous_head('<!-- taskly-test-agent-state {"head": "not-a-sha"} -->') is None
+    assert report.previous_head("<!-- taskly-test-agent-state {broken -->") is None
+
+
+def test_the_stacked_pull_request_is_linked_with_the_approval_hint():
+    text = report.render(CTX, AGENT, VERIFIED, stacked=21)
+    assert "#21" in text and "approval click" in text and "merge gate" in text
+
+
+def test_the_pull_request_body_is_escaped_text():
+    agent = {**AGENT, "structured_output": {**AGENT["structured_output"], "summary": "@x <b>y</b>"}}
+    body = report.render_pull_request_body({"pull_request": 9}, agent, VERIFIED)
+    assert "#9" in body and "<b>" not in body
