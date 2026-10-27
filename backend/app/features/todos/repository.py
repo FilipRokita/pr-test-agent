@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .mappers import from_model
 from .models import TodoRecord
-from .schemas import Todo, TodoCreate, TodoUpdate
+from .schemas import Todo, TodoCreate, TodoStats, TodoUpdate
 
 
 class TodoRepository:
@@ -46,3 +46,9 @@ class TodoRepository:
         self.session.delete(record)
         self.session.commit()
         return True
+
+    def stats(self, today: date) -> TodoStats:
+        todos = self.list()
+        completed = sum(1 for todo in todos if todo.completed)
+        overdue = sum(1 for todo in todos if not todo.completed and todo.due_date is not None and todo.due_date < today)
+        return TodoStats(total=len(todos), completed=completed, active=len(todos) - completed, overdue=overdue)
