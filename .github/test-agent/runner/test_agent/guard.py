@@ -91,7 +91,12 @@ def _python_tests_without_assertion(file: _File) -> list[str]:
                 index += 1
                 continue
             indent = len(match.group(1))
-            end = index + 1
+            end, depth = index, 0
+            while end < len(new_side):  # the signature may span several lines
+                depth += new_side[end][1].count("(") - new_side[end][1].count(")")
+                end += 1
+                if depth <= 0:
+                    break
             while end < len(new_side):
                 text = new_side[end][1]
                 if text.strip() and len(text) - len(text.lstrip()) <= indent:

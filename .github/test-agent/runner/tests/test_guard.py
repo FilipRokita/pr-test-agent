@@ -149,3 +149,27 @@ def test_removing_assertions_is_a_warning():
     )
     result = guard.check(patch)
     assert any("assertions" in w for w in result.warnings)
+
+
+MULTILINE = (
+    "@pytest.mark.parametrize(\n    ('a', 'b'),\n    [(1, 1), (2, 2)],\n)\n"
+    "def test_long_signature(\n    model_factory,\n    todo_values,\n    a,\n    b,\n):\n"
+    "    session = Mock()\n    assert a == b\n"
+)
+
+
+def test_a_test_with_a_multiline_signature_and_an_assertion_is_accepted():
+    assert guard.check(new_file("backend/tests/test_a.py", MULTILINE)).violations == []
+
+
+def test_a_test_with_a_multiline_signature_and_no_assertion_is_still_rejected():
+    body = MULTILINE.replace("    assert a == b\n", "    value = a\n")
+    result = guard.check(new_file("backend/tests/test_a.py", body))
+    assert any("test_long_signature has no assertion" in v for v in result.violations)
+
+
+def test_the_body_of_the_next_function_does_not_count_for_this_one():
+    body = "def test_one(\n    a,\n):\n    value = a\n\n\ndef test_two():\n    assert 1\n"
+    result = guard.check(new_file("backend/tests/test_a.py", body))
+    assert any("test_one has no assertion" in v for v in result.violations)
+    assert not any("test_two" in v for v in result.violations)
