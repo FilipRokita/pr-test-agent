@@ -112,3 +112,30 @@ def test_delete_returns_false_and_skips_commit_for_missing_task():
 
     session.delete.assert_not_called()
     session.commit.assert_not_called()
+
+
+def test_stats_counts_only_active_tasks_due_before_today_as_overdue(model_factory, todo_values):
+    today = date(2026, 10, 2)
+    yesterday = date(2026, 10, 1)
+    tasks = [
+        {"id": 1, "completed": False, "due_date": yesterday},  # overdue
+        {"id": 2, "completed": False, "due_date": today},  # due today: not overdue
+        {"id": 3, "completed": False, "due_date": None},  # no due date
+        {"id": 4, "completed": True, "due_date": yesterday},  # done late: not overdue
+        {"id": 5, "completed": True, "due_date": None},
+    ]
+    session = Mock(spec=Session)
+    session.scalars.return_value = [model_factory({**todo_values, **task}) for task in tasks]
+
+    stats = TodoRepository(session).stats(today)
+
+    assert stats.model_dump() == {"total": 5, "completed": 2, "active": 3, "overdue": 1}
+
+
+def test_stats_returns_zeros_without_tasks():
+    session = Mock(spec=Session)
+    session.scalars.return_value = []
+
+    stats = TodoRepository(session).stats(date(2026, 10, 2))
+
+    assert stats.model_dump() == {"total": 0, "completed": 0, "active": 0, "overdue": 0}
