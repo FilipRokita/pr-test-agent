@@ -158,3 +158,10 @@ security practices, testability, accessibility and performance, etc. The list is
 examples, not a limit. Check the code, the installed tooling or the official docs
 rather than guessing, and ask the user only when the answer would change the
 product's direction or cannot be found.
+
+## 11. Test agent
+
+`.github/test-agent/` is product code for the pull request test agent (plugin, runner, evals), separate from
+these instructions: the CI agent never reads this file. Runner tests: see the "Test agent" section of
+[`README.md`](README.md). When the runner, its workflow or its commands change, update that section in the same
+change.

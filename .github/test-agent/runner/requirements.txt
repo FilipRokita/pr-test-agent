@@ -1,0 +1,3 @@
+claude-agent-sdk==0.2.174
+defusedxml==0.7.1
+diff-cover==10.6.0

@@ -87,3 +87,17 @@ python -m pytest --cov=app --cov-report=term-missing --cov-report=html
 frontend typecheck, Prettier check and tests with coverage, workflow linting (actionlint, zizmor) and a
 secret scan (gitleaks). Actions are pinned to commit SHAs and Dependabot keeps them, `pip` and `npm`
 dependencies current. Security reports: see [SECURITY.md](SECURITY.md).
+
+## Test agent
+
+Pull requests from this repository get unit tests proposed by an agent. The workflow is
+`.github/workflows/test-agent.yml`; the agent, its skills and the runner that drives it live in
+`.github/test-agent/`.
+
+Runner tests (no network, no credentials; the sandbox tests need `sudo` or root):
+
+```sh
+python -m venv .github/test-agent/runner/.venv
+.github/test-agent/runner/.venv/bin/pip install -r .github/test-agent/runner/requirements-dev.txt
+cd .github/test-agent/runner && .venv/bin/python -m pytest
+```
