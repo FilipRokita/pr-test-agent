@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+frontend/package-lock.json -diff
+backend/requirements.txt -diff

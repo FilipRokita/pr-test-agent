@@ -80,3 +80,10 @@ Coverage — `backend/coverage/html/index.html`:
 ```sh
 python -m pytest --cov=app --cov-report=term-missing --cov-report=html
 ```
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: backend tests with coverage,
+frontend typecheck, Prettier check and tests with coverage, workflow linting (actionlint, zizmor) and a
+secret scan (gitleaks). Actions are pinned to commit SHAs and Dependabot keeps them, `pip` and `npm`
+dependencies current. Security reports: see [SECURITY.md](SECURITY.md).
