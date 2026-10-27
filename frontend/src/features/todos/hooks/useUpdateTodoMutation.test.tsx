@@ -5,7 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { todoFixture } from '../../../test/todoFixture'
 import { todoKeys } from '../api/queryKeys'
 import { todosApi } from '../api/todos'
-import type { Todo } from '../types'
+import type { Todo, TodoStats } from '../types'
 import { useUpdateTodoMutation } from './useUpdateTodoMutation'
 
 vi.mock('../api/todos', () => ({ todosApi: { update: vi.fn() } }))
@@ -40,6 +40,29 @@ it('replaces only the saved task in the cached list, keeping its position', asyn
     completed: true,
   })
   expect(client.getQueryData(todoKeys.list)).toEqual([first, saved, last])
+})
+
+it('marks the cached statistics stale but not the updated list after saving', async () => {
+  client.setQueryData(todoKeys.list, [todoFixture])
+  client.setQueryData(todoKeys.stats, {
+    total: 1,
+    completed: 0,
+    active: 1,
+    overdue: 0,
+  } satisfies TodoStats)
+  vi.mocked(todosApi.update).mockResolvedValue({
+    ...todoFixture,
+    completed: true,
+  })
+  const { result } = renderHook(() => useUpdateTodoMutation(), { wrapper })
+  await act(() =>
+    result.current.mutateAsync({
+      id: todoFixture.id,
+      input: { completed: true },
+    }),
+  )
+  expect(client.getQueryState(todoKeys.stats)?.isInvalidated).toBe(true)
+  expect(client.getQueryState(todoKeys.list)?.isInvalidated).toBe(false)
 })
 
 it('does not create a cached list when none was loaded', async () => {

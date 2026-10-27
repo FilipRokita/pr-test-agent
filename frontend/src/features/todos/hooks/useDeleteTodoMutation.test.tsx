@@ -5,10 +5,12 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { todoFixture } from '../../../test/todoFixture'
 import { todoKeys } from '../api/queryKeys'
 import { todosApi } from '../api/todos'
-import type { Todo } from '../types'
+import type { Todo, TodoStats } from '../types'
 import { useDeleteTodoMutation } from './useDeleteTodoMutation'
 
 vi.mock('../api/todos', () => ({ todosApi: { remove: vi.fn() } }))
+
+const stats: TodoStats = { total: 1, completed: 0, active: 1, overdue: 0 }
 
 let client: QueryClient
 
@@ -33,8 +35,19 @@ it('removes the deleted task from the cached list', async () => {
   expect(client.getQueryData(todoKeys.list)).toEqual([other])
 })
 
+it('marks the cached statistics stale but not the updated list after deletion', async () => {
+  client.setQueryData(todoKeys.list, [todoFixture])
+  client.setQueryData(todoKeys.stats, stats)
+  vi.mocked(todosApi.remove).mockResolvedValue(undefined)
+  const { result } = renderHook(() => useDeleteTodoMutation(), { wrapper })
+  await act(() => result.current.mutateAsync(todoFixture.id))
+  expect(client.getQueryState(todoKeys.stats)?.isInvalidated).toBe(true)
+  expect(client.getQueryState(todoKeys.list)?.isInvalidated).toBe(false)
+})
+
 it('keeps the task cached when deletion fails', async () => {
   client.setQueryData(todoKeys.list, [todoFixture])
+  client.setQueryData(todoKeys.stats, stats)
   vi.mocked(todosApi.remove).mockRejectedValue(new Error('Not allowed.'))
   const { result } = renderHook(() => useDeleteTodoMutation(), { wrapper })
   await act(() =>
@@ -43,4 +56,5 @@ it('keeps the task cached when deletion fails', async () => {
     ),
   )
   expect(client.getQueryData(todoKeys.list)).toEqual([todoFixture])
+  expect(client.getQueryState(todoKeys.stats)?.isInvalidated).toBe(false)
 })
