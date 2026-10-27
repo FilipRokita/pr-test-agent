@@ -178,7 +178,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -f "tool-base/$AGENT_RUNNER/requirements.txt" ]; then tool=tool-base; else tool=tool-head; fi
+          if [ -f "tool-base/$AGENT_RUNNER/requirements.txt" ]; then tool="tool-base"; else tool="tool-head"; fi
           python -m venv /tmp/runner-venv
           /tmp/runner-venv/bin/pip install --quiet -r "$tool/$AGENT_RUNNER/requirements.txt"
           PYTHONPATH="$tool/$AGENT_RUNNER" /tmp/runner-venv/bin/python -m test_agent publish \

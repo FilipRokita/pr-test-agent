@@ -95,7 +95,7 @@ def out_dir():
 @needs_env
 def test_backend_suite_runs_in_the_sandbox_and_reports_outcomes(out_dir):
     result = tools.run_stack(REPO, "backend", [], coverage=True, out_dir=out_dir)
-    assert result["ok"] is True
+    assert result["ok"] is True, result["output"]
     assert result["counts"]["failed"] == 0 and result["counts"]["passed"] >= 21
     assert (out_dir / "coverage.xml").exists() and (out_dir / "coverage.json").exists()
 
@@ -103,8 +103,8 @@ def test_backend_suite_runs_in_the_sandbox_and_reports_outcomes(out_dir):
 @needs_env
 def test_frontend_suite_runs_in_the_sandbox_and_reports_outcomes(out_dir):
     result = tools.run_stack(REPO, "frontend", [], coverage=True, out_dir=out_dir)
-    assert result["typecheck_ok"] is True
-    assert result["ok"] is True
+    assert result["typecheck_ok"] is True, result["typecheck_output"]
+    assert result["ok"] is True, result.get("error") or result["output"]
     assert result["counts"]["failed"] == 0 and result["counts"]["passed"] >= 18
     assert (out_dir / "cov" / "lcov.info").exists()
 
@@ -113,5 +113,5 @@ def test_frontend_suite_runs_in_the_sandbox_and_reports_outcomes(out_dir):
 def test_a_single_backend_file_can_be_selected(out_dir):
     result = tools.run_stack(REPO, "backend", ["backend/tests/features/todos/test_validators.py"],
                              coverage=False, out_dir=out_dir)
-    assert result["ok"] is True
+    assert result["ok"] is True, result["output"]
     assert {t["id"].split("::")[0] for t in result["tests"]} == {"tests.features.todos.test_validators"}
