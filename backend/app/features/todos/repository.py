@@ -13,7 +13,7 @@ class TodoRepository:
         self.session = session
 
     def list(self) -> list[Todo]:
-        statement = select(TodoRecord).order_by(TodoRecord.created_at.desc(), TodoRecord.id.desc())
+        statement = select(TodoRecord).order_by(TodoRecord.created_at.asc(), TodoRecord.id.asc())
         return [from_model(record) for record in self.session.scalars(statement)]
 
     def get(self, todo_id: int) -> Todo | None:
