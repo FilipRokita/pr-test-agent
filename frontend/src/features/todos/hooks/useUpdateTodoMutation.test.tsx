@@ -5,10 +5,12 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { todoFixture } from '../../../test/todoFixture'
 import { todoKeys } from '../api/queryKeys'
 import { todosApi } from '../api/todos'
-import type { Todo } from '../types'
+import type { Todo, TodoStats } from '../types'
 import { useUpdateTodoMutation } from './useUpdateTodoMutation'
 
 vi.mock('../api/todos', () => ({ todosApi: { update: vi.fn() } }))
+
+const stats: TodoStats = { total: 1, completed: 0, active: 1, overdue: 0 }
 
 let client: QueryClient
 
@@ -49,4 +51,23 @@ it('does not create a cached list when none was loaded', async () => {
     result.current.mutateAsync({ id: todoFixture.id, input: { title: 'x' } }),
   )
   expect(client.getQueryData(todoKeys.list)).toBeUndefined()
+})
+
+it('marks the cached statistics stale only after a successful update', async () => {
+  client.setQueryData(todoKeys.stats, stats)
+  vi.mocked(todosApi.update).mockRejectedValueOnce(new Error('Server down.'))
+  const { result } = renderHook(() => useUpdateTodoMutation(), { wrapper })
+  const variables = { id: todoFixture.id, input: { completed: true } }
+  await act(() =>
+    expect(result.current.mutateAsync(variables)).rejects.toThrow(
+      'Server down.',
+    ),
+  )
+  expect(client.getQueryState(todoKeys.stats)?.isInvalidated).toBe(false)
+  vi.mocked(todosApi.update).mockResolvedValueOnce({
+    ...todoFixture,
+    completed: true,
+  })
+  await act(() => result.current.mutateAsync(variables))
+  expect(client.getQueryState(todoKeys.stats)?.isInvalidated).toBe(true)
 })

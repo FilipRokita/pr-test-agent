@@ -1,6 +1,9 @@
+from datetime import date
+from unittest.mock import patch
+
 import pytest
 
-from app.features.todos.schemas import TodoCreate, TodoUpdate
+from app.features.todos.schemas import TodoCreate, TodoStats, TodoUpdate
 
 NOT_FOUND = {"detail": "Task not found."}
 
@@ -11,6 +14,17 @@ def test_list_returns_tasks_from_repository(client, repository_mock, todo):
     assert response.status_code == 200
     assert response.json() == [todo.model_dump(mode="json")]
     repository_mock.list.assert_called_once_with()
+
+
+def test_stats_returns_repository_counts_for_today(client, repository_mock):
+    repository_mock.stats.return_value = TodoStats(total=5, completed=2, active=3, overdue=1)
+    with patch("app.features.todos.router.date") as clock:
+        clock.today.return_value = date(2026, 10, 2)
+        response = client.get("/api/todos/stats")
+    assert response.status_code == 200
+    assert response.json() == {"total": 5, "completed": 2, "active": 3, "overdue": 1}
+    repository_mock.stats.assert_called_once_with(date(2026, 10, 2))
+    repository_mock.get.assert_not_called()
 
 
 def test_create_trims_input_and_returns_created_task(client, repository_mock, todo):

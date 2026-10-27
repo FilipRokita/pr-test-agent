@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.features.todos.models import TodoRecord
 from app.features.todos.repository import TodoRepository
-from app.features.todos.schemas import TodoCreate, TodoUpdate
+from app.features.todos.schemas import TodoCreate, TodoStats, TodoUpdate
 
 NOW = datetime(2026, 10, 2, 9, 30, tzinfo=timezone.utc)
 
@@ -112,3 +112,32 @@ def test_delete_returns_false_and_skips_commit_for_missing_task():
 
     session.delete.assert_not_called()
     session.commit.assert_not_called()
+
+
+def test_stats_counts_only_active_tasks_due_before_today_as_overdue(model_factory, todo_values):
+    today = date(2026, 10, 2)
+    yesterday = date(2026, 10, 1)
+    tasks = [
+        {"completed": False, "due_date": yesterday},  # overdue
+        {"completed": False, "due_date": today},  # due today: not overdue
+        {"completed": False, "due_date": None},  # no due date: not overdue
+        {"completed": True, "due_date": yesterday},  # completed: never overdue
+        {"completed": True, "due_date": None},
+    ]
+    session = Mock(spec=Session)
+    session.scalars.return_value = [
+        model_factory({**todo_values, "id": index, **task}) for index, task in enumerate(tasks, 1)
+    ]
+
+    stats = TodoRepository(session).stats(today)
+
+    assert stats == TodoStats(total=5, completed=2, active=3, overdue=1)
+
+
+def test_stats_returns_zeros_without_tasks():
+    session = Mock(spec=Session)
+    session.scalars.return_value = []
+
+    stats = TodoRepository(session).stats(date(2026, 10, 2))
+
+    assert stats == TodoStats(total=0, completed=0, active=0, overdue=0)
