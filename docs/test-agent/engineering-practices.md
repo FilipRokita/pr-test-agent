@@ -26,7 +26,7 @@ What was done around the agent to keep the repository safe and maintainable, and
   skills are read from the event stream, structured output comes back. It needs no secret and costs nothing.
 - Sandbox escape attempts are tests, and they run in CI on a GitHub-hosted runner: write to the workspace, read
   `.git`, read another process's environment, open a socket, leave a process behind.
-- The agent is measured, not trusted: seven [evaluation scenarios](../.github/test-agent/evals/scenarios) with
+- The agent is measured, not trusted: seven [evaluation scenarios](../../.github/test-agent/evals/scenarios) with
   deterministic expectations run several times each (`python -m test_agent eval`, or the manual workflow
   `test-agent-evals.yml`).
 - Each bug found by a real run became a failing test first: see [tuning history](tuning-history.md).

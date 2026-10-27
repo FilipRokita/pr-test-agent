@@ -5,6 +5,20 @@ updates them with reusable skills, runs them in a sandbox, and shows the verifie
 same agent was used to fill the missing tests of the existing application (backend 42% to 100%, frontend lines
 48% to 100%).
 
+## Highlights
+
+- **Results come from runs, not from the model.** A baseline, three shuffled runs, changed-line coverage, a type and
+  format check and a secret scan produce every number in the comment.
+- **New tests must detect the change.** They are also run against the old source; the ones that still pass are
+  listed as weak.
+- **A regression is reported, not hidden.** On a pull request that claims "no behaviour change" but changes
+  behaviour, the bot reports the broken test and a suspected bug and writes no test that would cover it up.
+- **The model never holds the write token.** Four jobs with split privileges; tests run with no network, no
+  environment and a read-only workspace.
+- **Measured, not claimed.** Seven evaluation scenarios, three runs each, all passed; twelve bugs found on real runs
+  are recorded and fixed.
+- **The same agent filled the gaps of the application:** backend 42% to 100%, frontend lines 48% to 100%.
+
 ## 1. Main technical decisions
 
 | Decision | Choice | Why |
@@ -18,7 +32,7 @@ same agent was used to fill the missing tests of the existing application (backe
 | Status of the bot | Advisory; the ordinary CI is the merge gate | A model outage must not block merging. |
 | Skills | The open Agent Skills format, five skills | Reusable across the pull request workflow, the backfill, the evaluations and local use. |
 
-More on the options that were compared: [design process](docs/design-process.md).
+More on the options that were compared: [design process](docs/test-agent/design-process.md).
 
 ## 2. Running the workflow and prerequisites
 
@@ -66,7 +80,7 @@ In a run the agent follows one workflow and loads one skill per job:
 | Final self-review of every test | `review-test-quality` |
 
 The skills actually invoked are read from the event stream of the run and shown in the comment, not taken from the
-model's own account. How the pieces fit: [architecture](docs/architecture.md).
+model's own account. How the pieces fit: [architecture](docs/test-agent/architecture.md).
 
 ## 4. Example run
 
@@ -91,7 +105,7 @@ only changes the README; the bot does not run.
 
 Seven fixed scenarios, three runs each, with deterministic assertions: all pass 3 of 3 (new feature, intended
 change, regression, documentation only, refactor, prompt injection, frontend only). Details and the bugs the
-measurements found: [tuning history](docs/tuning-history.md).
+measurements found: [tuning history](docs/test-agent/tuning-history.md).
 
 ## 5. Assumptions
 
@@ -121,7 +135,7 @@ measurements found: [tuning history](docs/tuning-history.md).
 - In the comment on #17 the sentence "The PR already includes tests" refers to the bot's own earlier proposal, which
   the workflow restores before each run; the pull request branch itself contains only source changes.
 
-More: [threat model](docs/threat-model.md).
+More: [threat model](docs/test-agent/threat-model.md).
 
 ## 7. What to change for production
 
@@ -134,7 +148,7 @@ More: [threat model](docs/threat-model.md).
 
 ## Beyond the brief
 
-- [Architecture](docs/architecture.md): job flow, what the agent can do, module map (diagrams).
-- [Threat model](docs/threat-model.md): attacks, controls and the tests that exercise them.
-- [Engineering practices](docs/engineering-practices.md): pinned actions, least privilege, workflow lint, secret scanning, Dependabot, test-first runner, sandbox escape tests in CI.
-- [Design process](docs/design-process.md) and [tuning history](docs/tuning-history.md): what was compared, measured and fixed.
+- [Architecture](docs/test-agent/architecture.md): job flow, what the agent can do, module map (diagrams).
+- [Threat model](docs/test-agent/threat-model.md): attacks, controls and the tests that exercise them.
+- [Engineering practices](docs/test-agent/engineering-practices.md): pinned actions, least privilege, workflow lint, secret scanning, Dependabot, test-first runner, sandbox escape tests in CI.
+- [Design process](docs/test-agent/design-process.md) and [tuning history](docs/test-agent/tuning-history.md): what was compared, measured and fixed.
