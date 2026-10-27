@@ -75,3 +75,19 @@ def test_changed_paths_reads_renames_and_deletions():
         "diff --git a/backend/tests/test_gone.py b/backend/tests/test_gone.py\ndeleted file mode 100644\n"
     )
     assert patch.changed_paths(text) == ["backend/tests/test_a.py", "backend/tests/test_b.py", "backend/tests/test_gone.py"]
+
+
+def test_a_patch_applies_after_file_metadata_changed(repo, tmp_path_factory):
+    """Setting ACLs on the workspace changes ctime and mtime of every file; the content is untouched."""
+    import os
+
+    (repo / "backend/tests/test_old.py").write_text("def test_old():\n    assert 1 == 1\n")
+    text = patch.create(repo)
+    clean = tmp_path_factory.mktemp("clean") / "r"
+    subprocess.run(["git", "clone", "-q", str(repo), str(clean)], check=True)
+    subprocess.run(["git", "checkout", "-q", "HEAD~0", "--", "."], cwd=clean, check=True)
+    target = clean / "backend/tests/test_old.py"
+    os.utime(target, (1, 1))
+    os.chmod(target, 0o664)
+    patch.apply(clean, text)
+    assert "1 == 1" in target.read_text()

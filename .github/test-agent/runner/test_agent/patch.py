@@ -39,4 +39,4 @@ def apply(root: Path | str, patch_text: str) -> None:
     for path in changed_paths(patch_text):
         if not policy.can_write(root, Path(root) / path):
             raise PatchError(f"patch touches a file outside the writable area: {path}")
-    git.run(root, "apply", "--index", "--whitespace=nowarn", "-", stdin=patch_text)
+    git.run(root, "apply", "--whitespace=nowarn", "-", stdin=patch_text)
