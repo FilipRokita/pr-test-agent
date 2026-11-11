@@ -12,7 +12,7 @@ cp .env.example .env
 docker compose up --build -d --wait
 ```
 
-Application: http://localhost:8080. API: http://localhost:8000/docs.
+Open the application at http://localhost:8080. The API documentation is at http://localhost:8000/docs.
 
 ```sh
 docker compose down
